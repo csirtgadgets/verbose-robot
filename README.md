@@ -1,2 +1,4 @@
-# verbose-robot
-CIFv4
+# Goals
+* Speed
+* Streaming
+* AI
