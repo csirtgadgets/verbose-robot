@@ -1,4 +1,4 @@
 # Goals
-* Performance
-* Streaming
-* AI
+* Performance (Leaner, Faster).
+* Realtime Streaming and Correlation.
+* Threat Forcasting.
