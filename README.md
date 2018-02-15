@@ -1,4 +1,4 @@
 # Goals
-* Speed
+* Performance
 * Streaming
 * AI
