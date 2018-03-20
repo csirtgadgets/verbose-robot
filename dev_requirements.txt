@@ -1,0 +1,5 @@
+coverage>=4.2
+pytest-cov>=2.2.1
+pytest>=2.8.0,<3.0
+faker>=0.7,<0.8
+-r requirements.txt
