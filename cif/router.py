@@ -10,15 +10,16 @@ from time import sleep
 import zmq
 import os
 import sys
+
 from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, RUNTIME_PATH
 from cifsdk.constants import CONFIG_PATH
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setup_runtime_path, read_config
-from cif.hunter import Hunter
+from cif_hunter import Hunter
 from cif.store import Store
-from cif.gatherer import Gatherer
+from cif_gatherer import Gatherer
 import time
 import multiprocessing as mp
-from cifsdk.msg import Msg
+from cifsdk_msg import Msg
 
 
 HUNTER_MIN_CONFIDENCE = 4
@@ -31,21 +32,18 @@ STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch
 ZMQ_HWM = 1000000
 ZMQ_SNDTIMEO = 5000
 ZMQ_RCVTIMEO = 5000
-FRONTEND_TIMEOUT = os.environ.get('CIF_FRONTEND_TIMEOUT', 100)
-BACKEND_TIMEOUT = os.environ.get('CIF_BACKEND_TIMEOUT', 10)
 
-HUNTER_TOKEN = os.environ.get('CIF_HUNTER_TOKEN', None)
+FRONTEND_TIMEOUT = os.getenv('CIF_FRONTEND_TIMEOUT', 100)
+BACKEND_TIMEOUT = os.getenv('CIF_BACKEND_TIMEOUT', 10)
 
-CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', 'cif-router.yml')
-if not os.path.isfile(CONFIG_PATH):
-    CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', os.path.join(os.path.expanduser('~'), 'cif-router.yml'))
+HUNTER_TOKEN = os.getenv('CIF_HUNTER_TOKEN', None)
 
 STORE_DEFAULT = os.getenv('CIF_STORE_STORE', STORE_DEFAULT)
 STORE_NODES = os.getenv('CIF_STORE_NODES')
 
 PIDFILE = os.getenv('CIF_ROUTER_PIDFILE', '{}/cif_router.pid'.format(RUNTIME_PATH))
 
-TRACE = os.environ.get('CIF_ROUTER_TRACE')
+TRACE = os.getenv('CIF_ROUTER_TRACE')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
@@ -288,12 +286,6 @@ def main():
         for i in to_ignore:
             logging.getLogger(i).setLevel(logging.WARNING)
 
-    o = read_config(args)
-    options = vars(args)
-    for v in options:
-        if options[v] is None:
-            options[v] = o.get(v)
-
     setup_runtime_path(args.runtime_path)
     setup_signals(__name__)
 
@@ -335,6 +327,7 @@ def main():
     logger.info('Shutting down')
     if os.path.isfile(args.pidfile):
         os.unlink(args.pidfile)
+
 
 if __name__ == "__main__":
     main()

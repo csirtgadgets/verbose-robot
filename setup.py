@@ -50,11 +50,13 @@ setup(
     scripts=[],
     entry_points={
         'console_scripts': [
-            # 'cif-router=cif.router:main',
+            'cif-router=cif.router:main',
             'cif-httpd=cif_httpd.app:main',
             'cif=cifsdk.cli:main',
             'cif-tokens=cifsdk.tokens:main',
             'cif-hunter=cif_hunter:main',
+            'cif-gatherer=cif_gatherer:main',
+            'cif-store=cif.store:main',
         ]
     },
 )
