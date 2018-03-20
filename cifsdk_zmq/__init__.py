@@ -1,17 +1,17 @@
 import time
 import json
-from cifsdk.client import Client
-from cifsdk_msg import Msg
-from cifsdk.exceptions import AuthError, CIFConnectionError, TimeoutError, InvalidSearch, CIFBusy
-from cifsdk.constants import PYVERSION
-from csirtg_indicator import Indicator
 import logging
 import os
 import zlib
 from zmq.eventloop.ioloop import IOLoop
 from pprint import pprint
-
 import zmq
+
+from cifsdk.client import Client
+from cifsdk_msg import Msg
+from cifsdk.exceptions import AuthError, CIFConnectionError, TimeoutError, InvalidSearch, CIFBusy
+from cifsdk.constants import PYVERSION
+from csirtg_indicator import Indicator
 
 SNDTIMEO = os.getenv('ZMQ_SNDTIMEO', 90000)  # 90s
 RCVTIMEO = os.getenv('ZMQ_RCVTIMEO', 90000)  # 90s
@@ -45,80 +45,6 @@ class ZMQ(Client):
         self.nowait = kwargs.get('nowait', False)
         if self.nowait:
             self.socket = self.context.socket(zmq.DEALER)
-
-    def _recv(self, decode=True):
-        mtype, data = Msg().recv(self.socket)
-
-        if not decode:
-            return data
-
-        data = json.loads(data)
-
-        if data.get('message') == 'unauthorized':
-            raise AuthError()
-
-        if data.get('message') == 'busy':
-            raise CIFBusy()
-
-        if data.get('message') == 'invalid search':
-            raise InvalidSearch()
-
-        if data.get('status') != 'success':
-            raise RuntimeError(data.get('message'))
-
-        if data.get('data') is None:
-            raise RuntimeError('invalid response')
-
-        if isinstance(data.get('data'), bool):
-            return data['data']
-
-        # is this a straight up elasticsearch string?
-        if data['data'] == '{}':
-            return []
-
-        if isinstance(data['data'], basestring) and data['data'].startswith('{"hits":{"hits":[{"_source":'):
-            data['data'] = json.loads(data['data'])
-            data['data'] = [r['_source'] for r in data['data']['hits']['hits']]
-
-        try:
-            data['data'] = zlib.decompress(data['data'])
-        except (zlib.error, TypeError):
-            pass
-
-        return data.get('data')
-
-    def _send(self, mtype, data='[]', nowait=False, decode=True):
-
-        self.socket.connect(self.remote)
-
-        if isinstance(data, str):
-            data = data.encode('utf-8')
-
-        Msg(mtype=mtype, token=self.token, data=data).send(self.socket)
-
-        if self.nowait or nowait:
-            logger.debug('not waiting for a resp')
-            return
-
-        return self._recv(decode=decode)
-
-    def ping(self, write=False):
-        if write:
-            return self._send(Msg.PING_WRITE)
-
-        return self._send(Msg.PING)
-
-    def tokens_search(self, filters={}):
-        return self._send(Msg.TOKENS_SEARCH, json.dumps(filters))
-
-    def tokens_create(self, data):
-        return self._send(Msg.TOKENS_CREATE, data)
-
-    def tokens_delete(self, data):
-        return self._send(Msg.TOKENS_DELETE, data)
-
-    def tokens_edit(self, data):
-        return self._send(Msg.TOKENS_EDIT, data)
 
     def _handle_message_fireball(self, s, e):
         logger.debug('message received')
@@ -185,6 +111,67 @@ class ZMQ(Client):
         self.socket.close()
         return self.response
 
+    def _recv(self, decode=True):
+        mtype, data = Msg().recv(self.socket)
+
+        if not decode:
+            return data
+
+        data = json.loads(data)
+
+        if data.get('message') == 'unauthorized':
+            raise AuthError()
+
+        if data.get('message') == 'busy':
+            raise CIFBusy()
+
+        if data.get('message') == 'invalid search':
+            raise InvalidSearch()
+
+        if data.get('status') != 'success':
+            raise RuntimeError(data.get('message'))
+
+        if data.get('data') is None:
+            raise RuntimeError('invalid response')
+
+        if isinstance(data.get('data'), bool):
+            return data['data']
+
+        # is this a straight up elasticsearch string?
+        if data['data'] == '{}':
+            return []
+
+        if isinstance(data['data'], basestring) and data['data'].startswith('{"hits":{"hits":[{"_source":'):
+            data['data'] = json.loads(data['data'])
+            data['data'] = [r['_source'] for r in data['data']['hits']['hits']]
+
+        try:
+            data['data'] = zlib.decompress(data['data'])
+        except (zlib.error, TypeError):
+            pass
+
+        return data.get('data')
+
+    def _send(self, mtype, data='[]', nowait=False, decode=True):
+
+        self.socket.connect(self.remote)
+
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+
+        Msg(mtype=mtype, token=self.token, data=data).send(self.socket)
+
+        if self.nowait or nowait:
+            return
+
+        return self._recv(decode=decode)
+
+    def ping(self):
+        return self._send(Msg.PING)
+
+    def ping_write(self):
+        return self._send(Msg.PING_WRITE)
+
     def indicators_search(self, filters, decode=True):
         return self._send(Msg.INDICATORS_SEARCH, json.dumps(filters), decode=decode)
 
@@ -209,6 +196,18 @@ class ZMQ(Client):
             data = str(data)
 
         return self._send(Msg.INDICATORS_DELETE, data)
+
+    def tokens_search(self, filters={}):
+        return self._send(Msg.TOKENS_SEARCH, json.dumps(filters))
+
+    def tokens_create(self, data):
+        return self._send(Msg.TOKENS_CREATE, data)
+
+    def tokens_delete(self, data):
+        return self._send(Msg.TOKENS_DELETE, data)
+
+    def tokens_edit(self, data):
+        return self._send(Msg.TOKENS_EDIT, data)
 
 
 Plugin = ZMQ

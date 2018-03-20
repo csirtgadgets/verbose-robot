@@ -1,7 +1,11 @@
 import ujson as json
 from pprint import pprint
 import msgpack
-from .constants import PYVERSION
+import sys
+
+PYVERSION = 2
+if sys.version_info > (3,):
+    PYVERSION = 3
 
 MAP = {
     1: 'ping',

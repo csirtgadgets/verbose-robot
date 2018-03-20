@@ -15,9 +15,9 @@ import arrow
 import yaml
 from pprint import pprint
 
-TOKEN = os.environ.get('CIF_TOKEN', None)
-COLS = os.environ.get('CIF_TOKEN_COLUMNS', ['username', 'groups', 'last_activity_at', 'admin', 'read', 'write', 'acl',
-                                            'expires', 'token'])
+TOKEN = os.getenv('CIF_TOKEN', None)
+COLS = os.getenv('CIF_TOKEN_COLUMNS', ['username', 'groups', 'last_activity_at', 'admin', 'read', 'write', 'acl',
+                                       'expires', 'token'])
 
 
 def main():
