@@ -5,18 +5,18 @@ import logging
 import traceback
 import zmq
 import multiprocessing
-from cifsdk_msg import Msg
 import os
-import cif.gatherer
-from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
-from csirtg_indicator import Indicator
-import time
 from pprint import pprint
+
+from csirtg_indicator import Indicator
+import cif_gatherer
+from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
+from cifsdk_msg import Msg
+from cifsdk.utils import load_plugins
+
 
 SNDTIMEO = 30000
 LINGER = 0
-
-logger = logging.getLogger(__name__)
 TRACE = os.environ.get('CIF_GATHERER_TRACE')
 
 logger = logging.getLogger(__name__)
@@ -34,16 +34,7 @@ class Gatherer(multiprocessing.Process):
         self.push = push
         self.exit = multiprocessing.Event()
 
-        self._init_plugins()
-
-    def _init_plugins(self):
-        import pkgutil
-        self.gatherers = []
-        logger.debug('loading plugins...')
-        for loader, modname, is_pkg in pkgutil.iter_modules(cif.gatherer.__path__, 'cif_gatherer.'):
-            p = loader.find_module(modname).load_module(modname)
-            self.gatherers.append(p)
-            logger.debug('plugin loaded: {}'.format(modname))
+        self.gatherers = load_plugins(cif_gatherer.__path__)
 
     def terminate(self):
         self.exit.set()
@@ -53,12 +44,12 @@ class Gatherer(multiprocessing.Process):
         if isinstance(data, dict):
             data = [data]
 
-        for d in data:
-            i = Indicator(**d)
-
-            for g in self.gatherers:
+        for g in self.gatherers:
+            for d in data:
+                i = Indicator(**d)
                 try:
                     g.process(i)
+                    rv.append(i.__dict__())
                 except Exception as e:
                     from pprint import pprint
                     pprint(i)
@@ -66,8 +57,6 @@ class Gatherer(multiprocessing.Process):
                     logger.error('gatherer failed: %s' % g)
                     logger.error(e)
                     traceback.print_exc()
-
-            rv.append(i.__dict__())
 
         return rv
 
@@ -78,10 +67,8 @@ class Gatherer(multiprocessing.Process):
 
         push_s.SNDTIMEO = SNDTIMEO
 
-        logger.debug('connecting to sockets...')
         pull_s.connect(self.pull)
         push_s.connect(self.push)
-        logger.debug('starting Gatherer')
 
         poller = zmq.Poller()
         poller.register(pull_s)
@@ -100,13 +87,8 @@ class Gatherer(multiprocessing.Process):
 
             data = json.loads(data)
 
-            start = time.time()
             data = self.process(data)
-            data = json.dumps(data)
-            logger.debug('sending back to router: %f' % (time.time() - start))
             Msg(id=id, mtype=mtype, token=token, data=data).send(push_s)
-
-        logger.info('shutting down gatherer..')
 
 
 def main():

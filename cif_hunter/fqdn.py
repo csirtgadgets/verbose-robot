@@ -1,5 +1,5 @@
 import logging
-from cif.utils import resolve_ns
+from cifsdk.utils.network import resolve_ns
 from csirtg_indicator import Indicator
 from dns.resolver import Timeout
 from csirtg_indicator import resolve_itype

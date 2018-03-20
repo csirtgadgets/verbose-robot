@@ -54,6 +54,14 @@ def load_plugin(path, plugin):
     return p
 
 
+def load_plugins(path):
+    p = []
+    for loader, modname, is_pkg in pkgutil.iter_modules([path]):
+        p.append(loader.find_module(modname).load_module(modname))
+
+    return p
+
+
 def setup_logging(args):
     loglevel = logging.getLevelName(LOGLEVEL)
 

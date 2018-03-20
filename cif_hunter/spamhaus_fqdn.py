@@ -6,7 +6,7 @@ import os
 
 from csirtg_indicator import Indicator
 
-from cif.utils import resolve_ns
+from cifsdk.utils.network import resolve_ns
 from .constants import ENABLED
 
 CONFIDENCE = 9

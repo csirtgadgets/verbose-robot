@@ -47,6 +47,8 @@ CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 300)
 # queue max to flush before we hit CIF_STORE_QUEUE_FLUSH mark
 CREATE_QUEUE_MAX = os.environ.get('CIF_STORE_QUEUE_MAX', 1000)
 
+REQUIRED_ATTRIBUTES = ['group', 'provider', 'indicator', 'itype', 'tags']
+
 MORE_DATA_NEEDED = -2
 TRACE = os.environ.get('CIF_STORE_TRACE')
 
@@ -217,16 +219,14 @@ class Store(multiprocessing.Process):
                 return
 
         handler = getattr(self, "handle_" + mtype)
+
         if not handler:
             logger.error('message type {0} unknown'.format(mtype))
-            Msg(id=id, data='0')
+            Msg(id=id, client_id=client_id, mtype=mtype, data='0').send(self.router)
+            return
 
         try:
             rv = handler(token, data, id=id, client_id=client_id)
-            if rv == MORE_DATA_NEEDED:
-                rv = {"status": "success", "data": '1'}
-            else:
-                rv = {"status": "success", "data": rv}
 
         except AuthError as e:
             logger.error(e)
@@ -236,20 +236,17 @@ class Store(multiprocessing.Process):
             err = 'invalid search'
 
         except InvalidIndicator as e:
-            logger.error(data)
-            logger.error(e)
-            traceback.print_exc()
             err = 'invalid indicator {}'.format(e)
-
-        except StoreLockError as e:
-            logger.error(e)
-            traceback.print_exc()
-            err = 'busy'
 
         except Exception as e:
             logger.error(e)
             traceback.print_exc()
             err = 'unknown failure'
+
+        if rv == MORE_DATA_NEEDED:
+            rv = {"status": "success", "data": '1'}
+        else:
+            rv = {"status": "success", "data": rv}
 
         if err:
             rv = {'status': 'failed', 'message': err}
@@ -266,10 +263,21 @@ class Store(multiprocessing.Process):
         if not err:
             self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
 
+    def _check_indicator(self, i, t):
+        for e in REQUIRED_ATTRIBUTES:
+            if not i.get(e):
+                raise InvalidIndicator('missing %s' % e)
+
+        if i['group'] not in t['groups']:
+            raise AuthError('unable to write to %s' % i['group'])
+
+        return True
+
     def handle_indicators_create(self, token, data, id=None, client_id=None, flush=False):
         # this will raise AuthError if false
         t = self.store.tokens.write(token)
 
+        # if there's more than 1, send it
         if len(data) > 1:
             start_time = time.time()
             logger.info('inserting %d indicators..', len(data))
@@ -279,17 +287,7 @@ class Store(multiprocessing.Process):
                 data = [data]
 
             for i in data:
-                if not i.get('group'):
-                    raise InvalidIndicator('missing group')
-
-                if i['group'] not in t['groups']:
-                    raise AuthError('unable to write to %s' % i['group'])
-
-                if i.get('message'):
-                    try:
-                        i['message'] = str(b64decode(data['message']))
-                    except (TypeError, binascii.Error) as e:
-                        pass
+                self._check_indicator(i, t)
 
             r = self.store.indicators.upsert(t, data, flush=flush)
 
@@ -299,15 +297,10 @@ class Store(multiprocessing.Process):
 
             return r
 
+        # queue it..
         data = data[0]
-        if data['group'] not in t['groups']:
-            raise AuthError('unauthorized to write to group: %s' % g)
 
-        if data.get('message'):
-            try:
-                data['message'] = str(b64decode(data['message']))
-            except (TypeError, binascii.Error) as e:
-                pass
+        self._check_indicator(data, t)
 
         if not self.create_queue.get(token):
             self.create_queue[token] = {'count': 0, "messages": []}
