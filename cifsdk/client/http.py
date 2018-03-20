@@ -2,29 +2,28 @@ import logging
 import requests
 import time
 import json
-from cifsdk.exceptions import AuthError, TimeoutError, NotFound, SubmissionFailed, InvalidSearch, CIFBusy
-from cifsdk.constants import VERSION, PYVERSION
 from pprint import pprint
 from base64 import b64decode
-from cifsdk.client import Client
 import os
-import zlib
 from time import sleep
 import random
 
-if PYVERSION == 3:
-    basestring = (str, bytes)
-
-
-requests.packages.urllib3.disable_warnings()
+from cifsdk.exceptions import AuthError, TimeoutError, NotFound, SubmissionFailed, InvalidSearch, CIFBusy
+from cifsdk.constants import VERSION, PYVERSION
+from cifsdk.client import Client
 
 TRACE = os.environ.get('CIFSDK_CLIENT_HTTP_TRACE')
 TIMEOUT = os.getenv('CIFSDK_CLIENT_HTTP_TIMEOUT', 120)
 RETRIES = os.getenv('CIFSDK_CLIENT_HTTP_RETRIES', 5)
 RETRIES_DELAY = os.getenv('CIFSDK_CLIENT_HTTP_RETRIES_DELAY', '30,60')
 
+if PYVERSION == 3:
+    basestring = (str, bytes)
+
 s, e = RETRIES_DELAY.split(',')
 RETRIES_DELAY = random.uniform(int(s), int(e))
+
+requests.packages.urllib3.disable_warnings()
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ class HTTP(Client):
         self.nowait = kwargs.get('nowait', False)
 
         self.session = requests.Session()
-        self.session.headers["Accept"] = 'application/vnd.cif.v3+json'
+        self.session.headers["Accept"] = 'application/vnd.cif.v4+json'
         self.session.headers['User-Agent'] = 'cifsdk-py/{}'.format(VERSION)
         self.session.headers['Authorization'] = 'Token token=' + self.token
         self.session.headers['Content-Type'] = 'application/json'
@@ -83,7 +82,7 @@ class HTTP(Client):
 
     def _get(self, uri, params={}, retry=True):
         if not uri.startswith('http'):
-            uri = self.remote + uri
+            uri = "%s/%s" % (self.remote, uri)
 
         resp = self.session.get(uri, params=params, verify=self.verify_ssl, timeout=self.timeout)
         n = RETRIES
@@ -96,7 +95,7 @@ class HTTP(Client):
             else:
                 raise e
 
-        while n != 0:
+        for nn in (1, n):
             logger.warning('setting random retry interval to spread out the load')
             logger.warning('retrying in %.00fs' % RETRIES_DELAY)
             sleep(RETRIES_DELAY)
@@ -105,7 +104,7 @@ class HTTP(Client):
             if resp.status_code == 200:
                 break
 
-            if n == 0:
+            if nn == n:
                 raise CIFBusy('system seems busy.. try again later')
 
         data = resp.content
@@ -115,29 +114,38 @@ class HTTP(Client):
 
         msgs = json.loads(data.decode('utf-8'))
 
+        if msgs.get('status', False) not in ['success', 'failure']:
+            raise RuntimeError(msgs)
+
+        if msgs.get('status') == 'failure':
+            raise InvalidSearch(msgs['message'])
+
         if msgs['data'] == '{}':
             msgs['data'] = []
 
+        # check to see if it's straight elasticsearch json
         if isinstance(msgs['data'], basestring) and msgs['data'].startswith('{"hits":{"hits":[{"_source":'):
             msgs['data'] = json.loads(msgs['data'])
             msgs['data'] = [r['_source'] for r in msgs['data']['hits']['hits']]
 
-        if not msgs.get('status') and not msgs.get('message') == 'success':
-            raise RuntimeError(msgs)
+        if isinstance(msgs[data], dict):
+            msgs['data'] = [msgs['data']]
 
-        if msgs.get('status') and msgs['status'] == 'failure':
-            raise InvalidSearch(msgs['message'])
+        for m in msgs['data']:
+            if not m.get('message'):
+                continue
 
-        if isinstance(msgs.get('data'), list):
-            for m in msgs['data']:
-                if m.get('message'):
-                    try:
-                        m['message'] = b64decode(m['message'])
-                    except Exception as e:
-                        pass
+            try:
+                m['message'] = b64decode(m['message'])
+            except Exception as e:
+                pass
+
         return msgs
 
     def _post(self, uri, data):
+        if not uri.startswith('http'):
+            uri = "%s/%s" % (self.remote, uri)
+
         if type(data) == dict:
             data = json.dumps(data)
 
@@ -147,10 +155,12 @@ class HTTP(Client):
         if isinstance(data, str):
             data = data.encode('utf-8')
 
-        data = zlib.compress(data)
-        headers = {
-            'Content-Encoding': 'deflate'
-        }
+        #TODO test? does this happen automagically?
+        # data = zlib.compress(data)
+        # headers = {
+        #     'Content-Encoding': 'deflate'
+        # }
+        headers = {}
         resp = self.session.post(uri, data=data, verify=self.verify_ssl, headers=headers, timeout=self.timeout)
 
         logger.debug(resp.content)
@@ -179,6 +189,9 @@ class HTTP(Client):
         return json.loads(resp.content.decode('utf-8'))
 
     def _delete(self, uri, params={}):
+        if not uri.startswith('http'):
+            uri = "%s/%s" % (self.remote, uri)
+
         params = {f: params[f] for f in params if params.get(f)}
         if params.get('nolog'):
             del params['nolog']
@@ -191,40 +204,16 @@ class HTTP(Client):
         return json.loads(resp.content.decode('utf-8'))
 
     def _patch(self, uri, data):
+        if not uri.startswith('http'):
+            uri = "%s/%s" % (self.remote, uri)
+
         resp = self.session.patch(uri, data=json.dumps(data))
         self._check_status(resp)
         return json.loads(resp.content)
 
-    def indicators_search(self, filters):
-        rv = self._get('/search', params=filters)
-        return rv['data']
-
-    def indicators_create(self, data):
-        data = str(data).encode('utf-8')
-
-        uri = "{0}/indicators".format(self.remote)
-        logger.debug(uri)
-        rv = self._post(uri, data)
-        return rv["data"]
-
-    def indicators_delete(self, filters):
-        uri = "{0}/indicators".format(self.remote)
-        logger.debug(uri)
-        rv = self._delete(uri, params=filters)
-        return rv["data"]
-
-    def feed(self, filters):
-        rv = self._get('/feed', params=filters)
-        return rv['data']
-
-    def ping(self, write=False):
+    def ping(self):
         t0 = time.time()
-
-        uri = '/ping'
-        if write:
-            uri = '/ping?write=1'
-
-        rv = self._get(uri)
+        rv = self._get('ping')
 
         if rv:
             rv = (time.time() - t0)
@@ -232,21 +221,42 @@ class HTTP(Client):
 
         return rv
 
+    def ping_write(self):
+        t0 = time.time()
+        rv = self._post('ping')
+
+        if rv:
+            rv = (time.time() - t0)
+            logger.debug('return time: %.15f' % rv)
+
+        return rv
+
+    def indicators_search(self, filters):
+        rv = self._get('search', params=filters)
+        return rv['data']
+
+    def indicators_create(self, data):
+        rv = self._post('indicators', data)
+        return rv["data"]
+
+    def indicators_delete(self, filters):
+        rv = self._delete('indicators', params=filters)
+        return rv["data"]
+
     def tokens_search(self, filters):
-        rv = self._get('{}/tokens'.format(self.remote), params=filters)
+        rv = self._get('tokens', params=filters)
         return rv['data']
 
     def tokens_delete(self, data):
-        rv = self._delete('{}/tokens'.format(self.remote), data)
+        rv = self._delete('tokens', data)
         return rv['data']
 
     def tokens_create(self, data):
-        logger.debug(data)
-        rv = self._post('{}/tokens'.format(self.remote), data)
+        rv = self._post('tokens', data)
         return rv['data']
 
     def tokens_edit(self, data):
-        rv = self._patch('{}/tokens'.format(self.remote), data)
+        rv = self._patch('tokens', data)
         return rv['data']
 
 
