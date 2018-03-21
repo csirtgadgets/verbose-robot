@@ -1,0 +1,113 @@
+# !/usr/bin/env python
+
+import ujson as json
+import logging
+import zmq
+import textwrap
+from argparse import ArgumentParser
+from argparse import RawDescriptionHelpFormatter
+import multiprocessing
+import os, traceback
+from pprint import pprint
+from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser
+
+logger = logging.getLogger(__name__)
+
+SNDTIMEO = 15000
+ZMQ_HWM = 1000000
+
+ROUTER_STREAM_ADDR = os.getenv('CIF_ROUTER_STREAM_ADDR', 'ipc://stream.ipc')
+STREAM_ADDR = os.getenv('CIF_STREAM_ADDR', 'tcp://127.0.0.1:5001')
+
+ENABLED = os.getenv('CIF_STREAMER_ENABLED', False)
+TRACE = os.getenv('CIF_STREAMER_TRACE', False)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+if TRACE == '1':
+    logger.setLevel(logging.DEBUG)
+
+
+class Streamer(multiprocessing.Process):
+
+    def __init__(self):
+        multiprocessing.Process.__init__(self)
+        self.exit = multiprocessing.Event()
+
+    def terminate(self):
+        self.exit.set()
+
+    def stop(self):
+        logger.info('shutting down')
+        self.terminate()
+
+    def start(self):
+        context = zmq.Context()
+
+        router = context.socket(zmq.PULL)
+        publisher = context.socket(zmq.PUB)
+
+        publisher.bind(STREAM_ADDR)
+        router.connect(ROUTER_STREAM_ADDR)
+
+        poller = zmq.Poller()
+        poller.register(router, zmq.POLLIN)
+
+        while not self.exit.is_set():
+            try:
+                s = dict(poller.poll(1000))
+            except SystemExit or KeyboardInterrupt:
+                break
+
+            if router not in s:
+                continue
+
+            data = router.recv_multipart()
+
+            logger.debug('got data..')
+            logger.debug(data)
+
+            logger.debug('sending..')
+            publisher.send_multipart(data)
+
+            data = json.loads(data[0])
+
+
+
+
+def main():
+    p = get_argument_parser()
+    p = ArgumentParser(
+        description=textwrap.dedent('''\
+        Env Variables:
+            CIF_ROUTER_STREAM_ADDR
+            CIF_STREAM_ADDR
+
+        example usage:
+            $ cif-streamer -d
+        '''),
+        formatter_class=RawDescriptionHelpFormatter,
+        prog='cif-streamer',
+        parents=[p]
+    )
+
+    args = p.parse_args()
+    setup_logging(args)
+
+    logger.info('loglevel is: {}'.format(logging.getLevelName(logger.getEffectiveLevel())))
+
+    setup_runtime_path(args.runtime_path)
+    # setup_signals(__name__)
+
+    s = Streamer()
+
+    try:
+        s.start()
+    except KeyboardInterrupt:
+        s.stop()
+
+
+
+if __name__ == "__main__":
+    main()
