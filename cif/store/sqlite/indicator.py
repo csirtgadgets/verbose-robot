@@ -1,45 +1,45 @@
 import os
-
 import arrow
-from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index
-from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
-
-from cifsdk.constants import RUNTIME_PATH, PYVERSION
 import json
 from base64 import b64decode, b64encode
-from csirtg_indicator import resolve_itype
-from csirtg_indicator.exceptions import InvalidIndicator
-from cif.store.plugins.indicator_plugin import IndicatorManagerPlugin
-from cifsdk.exceptions import InvalidSearch
 import ipaddress
-from .ip import Ip
-from .fqdn import Fqdn
-from .url import Url
-from .hash import Hash
-from sqlalchemy.ext.declarative import declarative_base
 import re
 import logging
 import time
 
-logger = logging.getLogger('cif.store.sqlite')
+from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index
+from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
+from sqlalchemy.ext.declarative import declarative_base
 
-DB_FILE = os.path.join(RUNTIME_PATH, 'cif.sqlite')
-REQUIRED_FIELDS = ['provider', 'indicator', 'tags', 'group', 'itype']
-HASH_TYPES = ['sha1', 'sha256', 'sha512', 'md5']
+from csirtg_indicator import resolve_itype
+from csirtg_indicator.exceptions import InvalidIndicator
+from cifsdk.exceptions import InvalidSearch
+from cifsdk.constants import VALID_FILTERS, DATA_PATH, PYVERSION
+from cif.store.plugin.indicator import IndicatorManagerPlugin
 
-from cif.httpd.common import VALID_FILTERS
+from .ip import Ip
+from .fqdn import Fqdn
+from .url import Url
+from .hash import Hash
+
 
 if PYVERSION > 2:
     basestring = (str, bytes)
 
+REQUIRED_FIELDS = ['provider', 'indicator', 'tags', 'group', 'itype']
+HASH_TYPES = ['sha1', 'sha256', 'sha512', 'md5']
+
 
 Base = declarative_base()
+
+logger = logging.getLogger('cif.store.sqlite')
 
 
 class Indicator(Base):
     __tablename__ = "indicators"
 
     id = Column(Integer, primary_key=True)
+    uuid = Column(String, index=True)
     indicator = Column(UnicodeText, index=True)
     group = Column(String)
     itype = Column(String, index=True)
@@ -54,6 +54,7 @@ class Indicator(Base):
     firsttime = Column(DateTime)
     lasttime = Column(DateTime, index=True)
     confidence = Column(Float, index=True)
+    probability = Column(Float, index=True)
     timezone = Column(String)
     city = Column(String)
     longitude = Column(String)
@@ -64,6 +65,7 @@ class Indicator(Base):
     rdata = Column(UnicodeText, index=True)
     count = Column(Integer)
     region = Column(String, index=True)
+    related = Column(String, index=True)
 
     tags = relationship(
         'Tag',
@@ -81,39 +83,38 @@ class Indicator(Base):
         cascade="all,delete"
     )
 
-    def __init__(self, indicator=None, itype=None, tlp=None, provider=None, portlist=None, asn=None, asn_desc=None,
-                 cc=None, protocol=None, firsttime=None, lasttime=None,
-                 reporttime=None, group="everyone", confidence=None,
-                 reference=None, reference_tlp=None, application=None, timezone=None, city=None, longitude=None,
-                 latitude=None, peers=None, description=None, additional_data=None, rdata=None, msg=None, count=1,
-                 region=None, version=None, **kwargs):
+    def __init__(self, **kwargs):
 
-        self.indicator = indicator
-        self.group = group
-        self.itype = itype
-        self.tlp = tlp
-        self.provider = provider
-        self.portlist = str(portlist)
-        self.asn = asn
-        self.asn_desc = asn_desc
-        self.cc = cc
-        self.protocol = protocol
-        self.reporttime = reporttime
-        self.firsttime = firsttime
-        self.lasttime = lasttime
-        self.confidence = confidence
-        self.reference = reference
-        self.reference_tlp = reference_tlp
-        self.timezone = timezone
-        self.city = city
-        self.longitude = longitude
-        self.latitude = latitude
-        self.peers = peers
-        self.description = description
-        self.additional_data = additional_data
-        self.rdata = rdata
-        self.count = count
-        self.region = region
+        self.uuid = kwargs.get('uuid')
+        self.indicator = kwargs.get('indicator')
+        self.group = kwargs.get('group', 'everyone')
+        self.itype = kwargs.get('indicator')
+        self.tlp = kwargs.get('indicator')
+        self.provider = kwargs.get('indicator')
+        self.portlist = str(kwargs.get('portlist', None))
+        self.asn = kwargs.get('asn')
+        self.asn_desc = kwargs.get('asn_desc')
+        self.cc = kwargs.get('cc')
+        self.protocol = kwargs.get('protocol')
+        self.reporttime = kwargs.get('reporttime')
+        self.firsttime = kwargs.get('firsttime')
+        self.lasttime = kwargs.get('lasttime')
+        self.confidence = kwargs.get('confidence')
+        self.probability = kwargs.get('probability')
+        self.reference = kwargs.get('reference')
+        self.reference_tlp = kwargs.get('reference_tlp')
+        self.timezone = kwargs.get('timezone')
+        self.city = kwargs.get('city')
+        self.longitude = kwargs.get('longitude')
+        self.latitude = kwargs.get('latitude')
+        self.peers = kwargs.get('peers')
+        self.description = kwargs.get('description')
+        self.additional_data = kwargs.get('additional_data')
+        self.rdata = kwargs.get('rdata')
+        self.rdata_type = kwargs.get('rdata_type')
+        self.count = kwargs.get('count')
+        self.region = kwargs.get('region')
+        self.related = kwargs.get('related')
 
         if self.reporttime and isinstance(self.reporttime, basestring):
             self.reporttime = arrow.get(self.reporttime).datetime
@@ -246,7 +247,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         return d
 
-    def test_valid_indicator(self, i):
+    def is_valid_indicator(self, i):
         if isinstance(i, Indicator):
             i = i.__dict__()
 
@@ -334,56 +335,68 @@ class IndicatorManager(IndicatorManagerPlugin):
 
     def _filter_terms(self, filters, s):
 
-        # TODO also you should do for k, v in filters.items():
-        # iteritems()?
-        for k in filters:
+        for k, v in filters.items():
             if k in ['nolog', 'days', 'hours', 'groups', 'limit']:
                 continue
 
             if k == 'reporttime':
-                if ',' in filters[k]:
-                    start, end = filters[k].split(',')
+                if ',' in v:
+                    start, end = v.split(',')
                     s = s.filter(Indicator.reporttime >= arrow.get(start).datetime)
                     s = s.filter(Indicator.reporttime <= arrow.get(end).datettime)
                 else:
-                    s = s.filter(Indicator.reporttime >= arrow.get(filters[k]).datetime)
+                    s = s.filter(Indicator.reporttime >= arrow.get(v).datetime)
 
             elif k == 'reporttimeend':
-                s = s.filter(Indicator.reporttime <= filters[k])
+                s = s.filter(Indicator.reporttime <= v)
 
             elif k == 'tags':
-                t = filters[k].split(',')
+                t = v.split(',')
                 s = s.outerjoin(Tag)
                 s = s.filter(or_(Tag.tag == tt for tt in t))
 
             elif k == 'confidence':
-                if ',' in str(filters[k]):
-                    start, end = str(filters[k]).split(',')
+                if ',' in str(v):
+                    start, end = str(v).split(',')
                     s = s.filter(Indicator.confidence >= float(start))
                     s = s.filter(Indicator.confidence <= float(end))
                 else:
-                    s = s.filter(Indicator.confidence >= float(filters[k]))
+                    s = s.filter(Indicator.confidence >= float(v))
+
+            elif k == 'probability':
+                if ',' in str(v):
+                    start, end = str(v).split(',')
+                    s = s.filter(Indicator.probability >= float(start))
+                    s = s.filter(Indicator.probability <= float(end))
+                else:
+                    s = s.filter(Indicator.probability >= float(v))
 
             elif k == 'itype':
-                s = s.filter(Indicator.itype == filters[k])
+                s = s.filter(Indicator.itype == v)
 
             elif k == 'provider':
-                s = s.filter(Indicator.provider == filters[k])
+                s = s.filter(Indicator.provider == v)
 
             elif k == 'asn':
-                s = s.filter(Indicator.asn == filters[k])
+                s = s.filter(Indicator.asn == v)
 
             elif k == 'asn_desc':
-                s = s.filter(Indicator.asn_desc.like('%{}%'.format(filters[k])))
+                s = s.filter(Indicator.asn_desc.like('%{}%'.format(v)))
 
             elif k == 'cc':
-                s = s.filter(Indicator.cc == filters[k])
+                s = s.filter(Indicator.cc == v)
 
             elif k == 'rdata':
-                s = s.filter(Indicator.rdata == filters[k])
+                s = s.filter(Indicator.rdata == v)
 
             elif k == 'region':
-                s = s.filter(Indicator.region == filters[k])
+                s = s.filter(Indicator.region == v)
+
+            elif k == 'related':
+                s = s.filter(Indicator.related == v)
+
+            elif k == 'uuid':
+                s = s.filter(Indicator.uuid == v)
 
             else:
                 raise InvalidSearch('invalid filter: %s' % k)
@@ -403,8 +416,6 @@ class IndicatorManager(IndicatorManagerPlugin):
         return s
 
     def _search(self, filters, token):
-        logger.debug('running search')
-
         myfilters = dict(filters.items())
 
         s = self.handle().query(Indicator)
@@ -415,10 +426,23 @@ class IndicatorManager(IndicatorManagerPlugin):
         s = self._filter_terms(myfilters, s)
 
         if myfilters.get('groups'):
-            s = self._filter_groups(myfilters, None, s)
-        else:
-            s = self._filter_groups({}, token, s)
-        return s
+            return self._filter_groups(myfilters, None, s)
+
+        return self._filter_groups({}, token, s)
+
+    def _cleanup_timestamps(self, i):
+        if not i.get('lasttime'):
+            i['lasttime'] = arrow.utcnow().datetime.replace(tzinfo=None)
+
+        if not i.get('reporttime'):
+            i['reporttime'] = arrow.utcnow().datetime.replace(tzinfo=None)
+
+        if PYVERSION == 2:
+            i['lasttime'] = arrow.get(i['lasttime']).datetime.replace(tzinfo=None)
+            i['reporttime'] = arrow.get(i['reporttime']).datetime.replace(tzinfo=None)
+
+        if not i.get('firsttime'):
+            i['firsttime'] = i['lasttime']
 
     def search(self, token, filters, limit=500):
         s = self._search(filters, token)
@@ -429,7 +453,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         return [self.to_dict(i) for i in rv]
 
-    def delete(self, token, data=None, id=None):
+    def delete(self, token, data=None):
         if type(data) is not list:
             data = [data]
 
@@ -437,22 +461,50 @@ class IndicatorManager(IndicatorManagerPlugin):
         for d in data:
             if d.get('id'):
                 ids.append(Indicator.id == d['id'])
-                logger.debug('removing: %s' % d['id'])
             else:
-                ss = self._search(d, token)
-                for i in ss:
-                    ids.append(Indicator.id == i.id)
-                    logger.debug('removing: %s' % i.indicator)
+                ids.append(Indicator.id == i.id for i in self._search(d, token))
 
         if len(ids) == 0:
             return 0
 
-        s = self.handle().query(Indicator)
-        s = s.filter(or_(*ids))
+        s = self.handle().query(Indicator).filter(or_(*ids))
         rv = s.delete()
         self.handle().commit()
 
         return rv
+
+    def _upsert_itype(self, s, i):
+        if i.itype is 'ipv4':
+            match = re.search('^(\S+)\/(\d+)$', i.indicator)  # TODO -- use ipaddress
+            if match:
+                ipv4 = Ipv4(ipv4=match.group(1), mask=match.group(2), indicator=i)
+            else:
+                ipv4 = Ipv4(ipv4=i.indicator, indicator=i)
+
+            s.add(ipv4)
+
+        elif i.itype is 'ipv6':
+            match = re.search('^(\S+)\/(\d+)$', i.itype)  # TODO -- use ipaddress
+            if match:
+                ip = Ipv6(ip=match.group(1), mask=match.group(2), indicator=i)
+            else:
+                ip = Ipv6(ip=i.indicator, indicator=i)
+
+            s.add(ip)
+
+        elif i.itype is 'fqdn':
+            fqdn = Fqdn(fqdn=i.indicator, indicator=i)
+            s.add(fqdn)
+
+        elif i.itype is 'url':
+            url = Url(url=i.indicator, indicator=i)
+            s.add(url)
+
+        elif i.itype in HASH_TYPES:
+            h = Hash(hash=i.indicator, indicator=i)
+            s.add(h)
+
+        return s
 
     def upsert(self, token, data, **kwargs):
         if type(data) == dict:
@@ -461,27 +513,12 @@ class IndicatorManager(IndicatorManagerPlugin):
         s = self.handle()
 
         n = 0
-        tmp_added = {}
+        cached_added = {}
 
         for d in data:
-            logger.debug(d)
-
-            if not d.get('group'):
-                raise InvalidIndicator('missing group')
-
-            if isinstance(d['group'], list):
-                d['group'] = d['group'][0]
-
-            # raises AuthError if invalid group
-            self._check_token_groups(token, d)
-
-            if PYVERSION == 2:
-                if isinstance(d['indicator'], str):
-                    d['indicator'] = unicode(d['indicator'])
-
-            self.test_valid_indicator(d)
 
             tags = d.get("tags", [])
+
             if len(tags) > 0:
                 if isinstance(tags, basestring):
                     tags = tags.split(',')
@@ -504,20 +541,20 @@ class IndicatorManager(IndicatorManagerPlugin):
                 else:
                     i = i.join(Ipv4).filter(Ipv4.ipv4 == d['indicator'])
 
-            if d['itype'] == 'ipv6':
+            elif d['itype'] == 'ipv6':
                 match = re.search('^(\S+)\/(\d+)$', d['indicator'])  # TODO -- use ipaddress
                 if match:
                     i = i.join(Ipv6).filter(Ipv6.ip == match.group(1), Ipv6.mask == match.group(2))
                 else:
                     i = i.join(Ipv6).filter(Ipv6.ip == d['indicator'])
 
-            if d['itype'] == 'fqdn':
+            elif d['itype'] == 'fqdn':
                 i = i.join(Fqdn).filter(Fqdn.fqdn == d['indicator'])
 
-            if d['itype'] == 'url':
+            elif d['itype'] == 'url':
                 i = i.join(Url).filter(Url.url == d['indicator'])
 
-            if d['itype'] in HASH_TYPES:
+            elif d['itype'] in HASH_TYPES:
                 i = i.join(Hash).filter(Hash.hash == d['indicator'])
 
             if len(tags):
@@ -525,105 +562,52 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             r = i.first()
 
+            # if the record exists..
+            if r and d.get('lasttime') and arrow.get(d['lasttime']).datetime <= arrow.get(r.lasttime).datetime:
+                logger.debug('skipping: %s' % d['indicator'])
+                continue
+
             if r:
-                if d.get('lasttime') and arrow.get(d['lasttime']).datetime > arrow.get(r.lasttime).datetime:
-                    logger.debug('{} {}'.format(arrow.get(r.lasttime).datetime, arrow.get(d['lasttime']).datetime))
-                    logger.debug('upserting: %s' % d['indicator'])
+                r.count += 1
+                r.lasttime = arrow.get(d['lasttime']).datetime.replace(tzinfo=None)
 
-                    r.count += 1
-                    r.lasttime = arrow.get(d['lasttime']).datetime.replace(tzinfo=None)
-
-                    if not d.get('reporttime'):
-                        d['reporttime'] = arrow.utcnow().datetime
-
-                    r.reporttime = arrow.get(d['reporttime']).datetime.replace(tzinfo=None)
-
-                    if d.get('message'):
-                        try:
-                            d['message'] = b64decode(d['message'])
-                        except Exception as e:
-                            pass
-                        m = Message(message=d['message'], indicator=r)
-                        s.add(m)
-
-                    n += 1
-                else:
-                    logger.debug('skipping: %s' % d['indicator'])
-            else:
-                if tmp_added.get(d['indicator']):
-                    if d.get('lasttime') in tmp_added[d['indicator']]:
-                        logger.debug('skipping: %s' % d['indicator'])
-                        continue
-                else:
-                    tmp_added[d['indicator']] = set()
-
-                if not d.get('lasttime'):
-                    d['lasttime'] = arrow.utcnow().datetime.replace(tzinfo=None)
-
-                if not d.get('reporttime'):
-                    d['reporttime'] = arrow.utcnow().datetime.replace(tzinfo=None)
-
-                if PYVERSION == 2:
-                    d['lasttime'] = arrow.get(d['lasttime']).datetime.replace(tzinfo=None)
-                    d['reporttime'] = arrow.get(d['reporttime']).datetime.replace(tzinfo=None)
-
-                if not d.get('firsttime'):
-                    d['firsttime'] = d['lasttime']
-
-                ii = Indicator(**d)
-                s.add(ii)
-
-                itype = resolve_itype(d['indicator'])
-
-                if itype is 'ipv4':
-                    match = re.search('^(\S+)\/(\d+)$', d['indicator'])  # TODO -- use ipaddress
-                    if match:
-                        ipv4 = Ipv4(ipv4=match.group(1), mask=match.group(2), indicator=ii)
-                    else:
-                        ipv4 = Ipv4(ipv4=d['indicator'], indicator=ii)
-
-                    s.add(ipv4)
-
-                elif itype is 'ipv6':
-                    match = re.search('^(\S+)\/(\d+)$', d['indicator']) # TODO -- use ipaddress
-                    if match:
-                        ip = Ipv6(ip=match.group(1), mask=match.group(2), indicator=ii)
-                    else:
-                        ip = Ipv6(ip=d['indicator'], indicator=ii)
-
-                    s.add(ip)
-
-                if itype is 'fqdn':
-                    fqdn = Fqdn(fqdn=d['indicator'], indicator=ii)
-                    s.add(fqdn)
-
-                if itype is 'url':
-                    url = Url(url=d['indicator'], indicator=ii)
-                    s.add(url)
-
-                if itype in HASH_TYPES:
-                    h = Hash(hash=d['indicator'], indicator=ii)
-                    s.add(h)
-
-                for t in tags:
-                    t = Tag(tag=t, indicator=ii)
-                    s.add(t)
+                r.reporttime = d.get('reporttime', arrow.utcnow().datetime)
+                r.reporttime = arrow.get(r.reporttime).datetime.replace(tzinfo=None)
 
                 if d.get('message'):
-                    try:
-                        d['message'] = b64decode(d['message'])
-                    except Exception as e:
-                        pass
-
-                    m = Message(message=d['message'], indicator=ii)
+                    m = Message(message=d['message'], indicator=r)
                     s.add(m)
 
                 n += 1
-                tmp_added[d['indicator']].add(d['lasttime'])
 
-            # if we're in testing mode, this needs re-attaching since we've manipulated the dict for Indicator()
-            # see test_store_sqlite
-            d['tags'] = ','.join(tags)
+                continue
+
+            # check to see if it's been added in the cache
+            if cached_added.get(d['indicator']):
+                if d.get('lasttime') in cached_added[d['indicator']]:
+                    logger.debug('skipping: %s' % d['indicator'])
+                    continue
+
+            # new record
+            cached_added[d['indicator']] = set()
+
+            self._cleanup_timestamps(d)
+
+            ii = Indicator(**d)
+            s.add(ii)
+
+            for t in tags:
+                t = Tag(tag=t, indicator=ii)
+                s.add(t)
+
+            if d.get('message'):
+                m = Message(message=d['message'], indicator=ii)
+                s.add(m)
+
+            self._upsert_itype(s, ii)
+
+            n += 1
+            cached_added[d['indicator']].add(d['lasttime'])
 
         logger.debug('committing')
         start = time.time()

@@ -13,7 +13,8 @@ if sys.version_info > (3,):
 
 TEMP_DIR = os.path.join(tempfile.gettempdir())
 RUNTIME_PATH = os.getenv('CIF_RUNTIME_PATH', TEMP_DIR)
-RUNTIME_PATH = os.path.join(RUNTIME_PATH)
+DATA_PATH = os.getenv('CIF_DATA_PATH', TEMP_DIR)
+
 
 # Logging stuff
 LOG_FORMAT = '%(asctime)s - %(levelname)s - %(name)s[%(lineno)s][%(threadName)s] - %(message)s'
@@ -44,3 +45,7 @@ ADVANCED = os.getenv('CIF_ADVANCED')
 
 COLUMNS = COLUMNS
 MAX_FIELD_SIZE = 30
+
+VALID_FILTERS = ['indicator', 'itype', 'confidence', 'provider', 'limit', 'application', 'nolog', 'tags', 'days',
+                 'hours', 'groups', 'reporttime', 'cc', 'asn', 'asn_desc', 'rdata', 'firsttime', 'lasttime', 'region',
+                 'probability']

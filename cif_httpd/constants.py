@@ -24,9 +24,6 @@ HTTPD_TOKEN = os.getenv('CIF_HTTPD_TOKEN')
 
 HTTPD_PROXY = os.getenv('CIF_HTTPD_PROXY')
 
-VALID_FILTERS = ['indicator', 'itype', 'confidence', 'provider', 'limit', 'application', 'nolog', 'tags', 'days',
-                 'hours', 'groups', 'reporttime', 'cc', 'asn', 'asn_desc', 'rdata', 'firsttime', 'lasttime', 'region']
-
 TOKEN_FILTERS = ['username', 'token']
 
 TEMP_DIR = os.path.join(tempfile.gettempdir())

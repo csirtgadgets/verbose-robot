@@ -289,6 +289,19 @@ class Store(multiprocessing.Process):
             for i in data:
                 self._check_indicator(i, t)
 
+                # python2
+                try:
+                    if isinstance(i['indicator'], str):
+                        i['indicator'] = unicode(i['indicator'])
+                except:
+                    pass
+
+                if i.get('message'):
+                    try:
+                        i['message'] = b64decode(i['message'])
+                    except Exception as e:
+                        pass
+
             r = self.store.indicators.upsert(t, data, flush=flush)
 
             n = len(data)
@@ -301,6 +314,12 @@ class Store(multiprocessing.Process):
         data = data[0]
 
         self._check_indicator(data, t)
+
+        if data.get('message'):
+            try:
+                data['message'] = b64decode(data['message'])
+            except Exception as e:
+                pass
 
         if not self.create_queue.get(token):
             self.create_queue[token] = {'count': 0, "messages": []}
