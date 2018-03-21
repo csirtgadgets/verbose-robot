@@ -7,7 +7,6 @@ import textwrap
 import ujson as json
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-import traceback
 import yaml
 from pprint import pprint
 import arrow
@@ -16,7 +15,6 @@ from csirtg_indicator import Indicator
 import zmq
 import time
 import traceback
-import binascii
 from base64 import b64decode
 
 import cif.store
@@ -29,6 +27,9 @@ from cif.exceptions import StoreLockError
 from csirtg_indicator import InvalidIndicator
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, load_plugin
 
+from .ping import PingHandler
+from .token import TokenHandler
+
 if PYVERSION > 2:
     basestring = (str, bytes)
 
@@ -37,21 +38,20 @@ STORE_PATH = os.path.join(MOD_PATH, "store")
 RCVTIMEO = 5000
 SNDTIMEO = 2000
 LINGER = 3
+MORE_DATA_NEEDED = -2
+
 STORE_DEFAULT = os.environ.get('CIF_STORE_STORE', 'sqlite')
 STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch']
 CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)  # seconds to flush the queue [interval]
 CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)  # num of records before we start throttling a token
+
 # seconds of in-activity before we remove from the penalty box
 CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 300)
 
 # queue max to flush before we hit CIF_STORE_QUEUE_FLUSH mark
 CREATE_QUEUE_MAX = os.environ.get('CIF_STORE_QUEUE_MAX', 1000)
-
 REQUIRED_ATTRIBUTES = ['group', 'provider', 'indicator', 'itype', 'tags']
-
-MORE_DATA_NEEDED = -2
 TRACE = os.environ.get('CIF_STORE_TRACE')
-
 GROUPS = ['everyone']
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,9 @@ class Store(multiprocessing.Process):
         self.context = None
 
         self._load_plugin(**self.kwargs)
+
+        self.ping_handler = PingHandler(self.store)
+        self.token_handler = TokenHandler(self.store)
 
     def _load_plugin(self, **kwargs):
         logger.debug('store is: {}'.format(self.store))
@@ -218,7 +221,12 @@ class Store(multiprocessing.Process):
                 Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
                 return
 
-        handler = getattr(self, "handle_" + mtype)
+        if mtype.start_with('tokens'):
+            handler = getattr(self.token_handler, "handle_" + mtype)
+        elif mtype.start_with('ping'):
+            handler = getattr(self.ping_handler, 'handle_%s' % mtype)
+        else:
+            handler = getattr(self, 'handle_%s' % mtype)
 
         if not handler:
             logger.error('message type {0} unknown'.format(mtype))
@@ -263,6 +271,34 @@ class Store(multiprocessing.Process):
         if not err:
             self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
 
+    def _log_search(self, t, data):
+        if not data.get('indicator'):
+            return
+
+        if data.get('nolog') in ['1', 'True', 1, True]:
+            return
+
+        if '*' in data.get('indicator'):
+            return
+
+        if '%' in data.get('indicator'):
+            return
+
+        ts = arrow.utcnow().format('YYYY-MM-DDTHH:mm:ss.SSZ')
+        s = Indicator(
+            indicator=data['indicator'],
+            tlp='amber',
+            confidence=10,
+            tags='search',
+            provider=t['username'],
+            firsttime=ts,
+            lasttime=ts,
+            reporttime=ts,
+            group=t['groups'][0],
+            count=1,
+        )
+        self.store.indicators.upsert(t, [s.__dict__()])
+
     def _check_indicator(self, i, t):
         for e in REQUIRED_ATTRIBUTES:
             if not i.get(e):
@@ -273,64 +309,54 @@ class Store(multiprocessing.Process):
 
         return True
 
-    def handle_indicators_create(self, token, data, id=None, client_id=None, flush=False):
-        # this will raise AuthError if false
-        t = self.store.tokens.write(token)
+    def _cleanup_indicator(self, i):
+        # python2
+        try:
+            if isinstance(i['indicator'], str):
+                i['indicator'] = unicode(i['indicator'])
+        except:
+            pass
 
-        # if there's more than 1, send it
-        if len(data) > 1:
-            start_time = time.time()
-            logger.info('inserting %d indicators..', len(data))
-
-            # this will raise AuthError if the groups don't match
-            if isinstance(data, dict):
-                data = [data]
-
-            for i in data:
-                self._check_indicator(i, t)
-
-                # python2
-                try:
-                    if isinstance(i['indicator'], str):
-                        i['indicator'] = unicode(i['indicator'])
-                except:
-                    pass
-
-                if i.get('message'):
-                    try:
-                        i['message'] = b64decode(i['message'])
-                    except Exception as e:
-                        pass
-
-            r = self.store.indicators.upsert(t, data, flush=flush)
-
-            n = len(data)
-            t = time.time() - start_time
-            logger.info('inserting %d indicators.. took %0.2f seconds (%0.2f/sec)', n, t, (n / t))
-
-            return r
-
-        # queue it..
-        data = data[0]
-
-        self._check_indicator(data, t)
-
-        if data.get('message'):
+        if i.get('message'):
             try:
-                data['message'] = b64decode(data['message'])
+                i['message'] = b64decode(i['message'])
             except Exception as e:
                 pass
 
+    def _queue_indicator(self, token, data, client_id):
         if not self.create_queue.get(token):
             self.create_queue[token] = {'count': 0, "messages": []}
 
         self.create_queue[token]['count'] += 1
         self.create_queue_count += 1
         self.create_queue[token]['last_activity'] = time.time()
-
         self.create_queue[token]['messages'].append((id, client_id, [data]))
 
         return MORE_DATA_NEEDED
+
+    def handle_indicators_create(self, token, data, id=None, client_id=None, flush=False):
+        # this will raise AuthError if false
+        t = self.store.tokens.write(token)
+
+        if len(data) == 1:
+            # queue it..
+            data = data[0]
+
+            self._check_indicator(data, t)
+            self._cleanup_indicator(data)
+
+            return self._queue_indicator(token, data, client_id)
+
+        # more than one, send it..
+        if isinstance(data, dict):
+            data = [data]
+
+        for i in data:
+            # this will raise AuthError if the groups don't match
+            self._check_indicator(i, t)
+            self._cleanup_indicator(i)
+
+        return self.store.indicators.upsert(t, data, flush=flush)
 
     def handle_indicators_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
@@ -372,90 +398,6 @@ class Store(multiprocessing.Process):
     def handle_indicators_delete(self, token, data=None, id=None, client_id=None):
         t = self.store.tokens.admin(token)
         return self.store.indicators.delete(t, data=data, id=id)
-
-    def handle_ping(self, token, **kwargs):
-        return self.store.ping(token)
-
-    def handle_ping_write(self, token, **kwargs):
-        return self.store.tokens.write(token)
-
-    def handle_tokens_search(self, token, data, **kwargs):
-        if self.store.tokens.admin(token):
-            return self.store.tokens.search(data)
-
-        raise AuthError('invalid token')
-
-    def handle_tokens_create(self, token, data, **kwargs):
-        if self.store.tokens.admin(token):
-            return self.store.tokens.create(data)
-
-        raise AuthError('invalid token')
-
-    def handle_tokens_delete(self, token, data, **kwargs):
-        if self.store.tokens.admin(token):
-            return self.store.tokens.delete(data)
-
-        raise AuthError('invalid token')
-
-    def handle_token_write(self, token, **kwargs):
-        return self.store.tokens.write(token)
-
-    def handle_tokens_edit(self, token, data, **kwargs):
-        if self.store.tokens.admin(token):
-            return self.store.tokens.edit(data)
-
-        raise AuthError('invalid token')
-
-    def token_create_admin(self, token=None, groups=GROUPS):
-        logger.info('testing for tokens...')
-        if self.store.tokens.admin_exists():
-            logger.info('admin token exists...')
-            return
-
-        logger.info('admin token does not exist, generating..')
-        rv = self.store.tokens.create({
-            'username': u'admin',
-            'groups': groups,
-            'read': u'1',
-            'write': u'1',
-            'admin': u'1',
-            'token': token
-        })
-        logger.info('admin token created: {}'.format(rv['token']))
-        return rv['token']
-
-    def token_create_smrt(self, token=None, groups=GROUPS):
-        logger.info('generating smrt token')
-        rv = self.store.tokens.create({
-            'username': u'csirtg-smrt',
-            'groups': groups,
-            'write': u'1',
-            'token': token
-        })
-        logger.info('smrt token created: {}'.format(rv['token']))
-        return rv['token']
-
-    def token_create_hunter(self, token=None, groups=GROUPS):
-        logger.info('generating hunter token')
-        rv = self.store.tokens.create({
-            'username': u'hunter',
-            'groups': groups,
-            'write': u'1',
-            'token': token
-        })
-        logger.info('hunter token created: {}'.format(rv['token']))
-        return rv['token']
-
-    def token_create_httpd(self, token=None, groups=GROUPS):
-        logger.info('generating httpd token')
-        rv = self.store.tokens.create({
-            'username': u'httpd',
-            'groups': groups,
-            'read': u'1',
-            'token': token
-        })
-        logger.info('httpd token created: {}'.format(rv['token']))
-        return rv['token']
 
 
 def main():
@@ -516,7 +458,7 @@ def main():
         with Store(store_type=args.store, nodes=args.nodes) as s:
             s._load_plugin(store_type=args.store, nodes=args.nodes)
 
-            t = s.token_create_smrt(token=args.token, groups=groups)
+            t = s.token_handler.token_create_smrt(token=args.token, groups=groups)
             if t:
                 if PYVERSION == 2:
                     t = t.encode('utf-8')
@@ -538,7 +480,7 @@ def main():
     if args.token_create_hunter:
         with Store(store_type=args.store, nodes=args.nodes) as s:
             s._load_plugin(store_type=args.store, nodes=args.nodes)
-            t = s.token_create_hunter(token=args.token, groups=groups)
+            t = s.token_handler.token_create_hunter(token=args.token, groups=groups)
             if t:
                 if PYVERSION == 2:
                     t = t.encode('utf-8')
@@ -558,7 +500,7 @@ def main():
     if args.token_create_admin:
         with Store(store_type=args.store, nodes=args.nodes) as s:
             s._load_plugin(store_type=args.store, nodes=args.nodes)
-            t = s.token_create_admin(token=args.token, groups=groups)
+            t = s.token_handler.token_create_admin(token=args.token, groups=groups)
             if t:
                 if PYVERSION == 2:
                     t = t.encode('utf-8')
@@ -578,7 +520,7 @@ def main():
     if args.token_create_httpd:
         with Store(store_type=args.store, nodes=args.nodes) as s:
             s._load_plugin(store_type=args.store, nodes=args.nodes)
-            t = s.token_create_httpd(token=args.token, groups=groups)
+            t = s.token_handler.token_create_httpd(token=args.token, groups=groups)
             if t:
                 if PYVERSION == 2:
                     t = t.encode('utf-8')
