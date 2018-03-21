@@ -12,6 +12,7 @@ from flask_cors import CORS
 from flask_compress import Compress
 from flask_restplus import Api
 from werkzeug.contrib.fixers import ProxyFix
+from flask_sockets import Sockets
 
 # from cif.constants import ROUTER_ADDR, RUNTIME_PATH
 # from cifsdk.utils import get_argument_parser, setup_logging, setup_signals, setup_runtime_path
@@ -32,6 +33,8 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 
 CORS(app, resources={r"/*": {"origins": "*"}})
 Compress(app)
+
+sockets = Sockets(app)
 
 authorizations = {
     'apikey': {
@@ -70,6 +73,16 @@ logging.getLogger('gunicorn.error').addHandler(console)
 logger = logging.getLogger('gunicorn.error')
 
 
+@sockets.route('/firehose')
+def echo_socket(ws):
+    while not ws.closed:
+        # subscribe to the socket, test auth
+        # stream messages from router
+        # send to the socket
+        # message = ws.receive()
+        # ws.send(message)
+
+
 @app.before_request
 def before_request():
     """
@@ -101,6 +114,9 @@ def before_request():
 
 
 def main():
+    from gevent import pywsgi
+    from geventwebsocket.handler import WebSocketHandler
+
     p = get_argument_parser()
     p = ArgumentParser(
         description=textwrap.dedent('''\
@@ -140,7 +156,10 @@ def main():
     try:
         logger.info('pinging router...')
         logger.info('starting up...')
-        app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
+
+        # app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
+        server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
+        server.serve_forever()
 
     except KeyboardInterrupt:
         logger.info('shutting down...')

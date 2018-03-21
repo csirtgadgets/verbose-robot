@@ -21,3 +21,6 @@ csirtg_smrt>=0.0.0b7,<1.0
 csirtg_dnsdb==0.0.0a4
 csirtg_domainsml<1.0
 
+gevent
+flask-sockets
+websocket-client>=0.44,<1

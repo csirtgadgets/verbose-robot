@@ -15,7 +15,7 @@ indicator = api.model('Indicator', {
 
 
 def _success(data=[]):
-    return {'status': 'success', data: data}
+    return {'status': 'success', 'data': data}
 
 
 def _failure(msg='unknown', data=[]):
