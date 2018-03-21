@@ -6,6 +6,7 @@ import traceback
 import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+import zmq
 
 from flask import Flask, request, _request_ctx_stack
 from flask_cors import CORS
@@ -13,9 +14,6 @@ from flask_compress import Compress
 from flask_restplus import Api
 from werkzeug.contrib.fixers import ProxyFix
 from flask_sockets import Sockets
-
-# from cif.constants import ROUTER_ADDR, RUNTIME_PATH
-# from cifsdk.utils import get_argument_parser, setup_logging, setup_signals, setup_runtime_path
 
 from .common import pull_token
 from .utils import get_argument_parser, setup_logging, setup_runtime_path
@@ -25,6 +23,8 @@ from .indicators import api as indicators_api
 from .ping import api as ping_api
 from .tokens import api as tokens_api
 from .health import api as health_api
+
+STREAM_ADDR = os.getenv('CIF_STREAM_ADDR', 'tcp://127.0.0.1:5001')
 
 # from .stats import api as stats_api
 
@@ -73,14 +73,28 @@ logging.getLogger('gunicorn.error').addHandler(console)
 logger = logging.getLogger('gunicorn.error')
 
 
-@sockets.route('/firehose')
+# https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
+@sockets.route('/streamer')
 def echo_socket(ws):
+
+    ctx = zmq.Context()
+    router = ctx.socket(zmq.SUB)
+    router.connect(STREAM_ADDR)
+
+    poller = zmq.Poller()
+    poller.register(router, zmq.POLLIN)
+
     while not ws.closed:
-        # subscribe to the socket, test auth
-        # stream messages from router
-        # send to the socket
-        # message = ws.receive()
-        # ws.send(message)
+        try:
+            s = dict(poller.poll(1000))
+        except SystemExit or KeyboardInterrupt:
+            break
+
+        if router not in s:
+            continue
+
+        message = router.recv_multipart()
+        ws.send(message[0])
 
 
 @app.before_request

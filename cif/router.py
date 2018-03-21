@@ -11,12 +11,14 @@ import zmq
 import os
 import sys
 
-from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, RUNTIME_PATH
+from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
+    RUNTIME_PATH
 from cifsdk.constants import CONFIG_PATH
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setup_runtime_path, read_config
 from cif_hunter import Hunter
 from cif.store import Store
 from cif_gatherer import Gatherer
+from .streamer import Streamer
 import time
 import multiprocessing as mp
 from cifsdk_msg import Msg
@@ -32,6 +34,9 @@ STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch
 ZMQ_HWM = 1000000
 ZMQ_SNDTIMEO = 5000
 ZMQ_RCVTIMEO = 5000
+
+ROUTER_STREAM_ADDR = os.getenv('CIF_ROUTER_STREAM_ADDR', 'ipc://stream.ipc')
+STREAMER_ENABLED = os.getenv('CIF_STREAMER_ENABLED', False)
 
 FRONTEND_TIMEOUT = os.getenv('CIF_FRONTEND_TIMEOUT', 100)
 BACKEND_TIMEOUT = os.getenv('CIF_BACKEND_TIMEOUT', 10)
@@ -95,6 +100,14 @@ class Router(object):
             self.hunters_s.bind(hunter)
             self._init_hunters(hunter_threads, hunter_token)
 
+        self.streamer_s = None
+        if STREAMER_ENABLED:
+            self.logger.debug('enabling streamer..')
+            self.streamer_s = self.context.socket(zmq.PUSH)
+            self.streamer_s.bind(ROUTER_STREAM_ADDR)
+            self.streamer = mp.Process(target=Streamer().start)
+            self.streamer.start()
+
         self.logger.info('launching frontend...')
         self.frontend_s = self.context.socket(zmq.ROUTER)
         self.frontend_s.set_hwm(ZMQ_HWM)
@@ -137,6 +150,8 @@ class Router(object):
         self.logger.info('stopping gatherers')
         for g in self.gatherers:
             g.terminate()
+
+        self.streamer.terminate()
 
         self.logger.info('stopping store..')
         self.store_p.terminate()
@@ -216,8 +231,13 @@ class Router(object):
             data = [data]
 
         for d in data:
+            s = json.dumps(d)
+
+            if STREAMER_ENABLED:
+                self.streamer_s.send_string(s)
+
             if d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
-                self.hunters_s.send_string(json.dumps(d))
+                self.hunters_s.send_string(s)
 
     def handle_indicators_search(self, id, mtype, token, data):
         self.handle_message_default(id, mtype, token, data)

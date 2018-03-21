@@ -57,6 +57,7 @@ setup(
             'cif-hunter=cif_hunter:main',
             'cif-gatherer=cif_gatherer:main',
             'cif-store=cif.store:main',
+            'cif-streamer=cif.streamer:main'
         ]
     },
 )
