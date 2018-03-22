@@ -196,7 +196,7 @@ class Store(multiprocessing.Process):
         while not self.exit.is_set():
             try:
                 m = dict(poller.poll(1000))
-            except SystemExit or KeyboardInterrupt:
+            except KeyboardInterrupt:
                 break
 
             if self.router in m:
@@ -444,7 +444,6 @@ def main():
     groups = args.token_groups.split(',')
 
     setup_logging(args)
-    logger = logging.getLogger(__name__)
     logger.info('loglevel is: {}'.format(logging.getLevelName(logger.getEffectiveLevel())))
 
     setup_signals(__name__)

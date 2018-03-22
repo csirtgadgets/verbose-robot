@@ -38,6 +38,8 @@ class Gatherer(multiprocessing.Process):
 
     def terminate(self):
         self.exit.set()
+        from time import sleep
+        sleep(0.01)
 
     def process(self, data):
         rv = []
@@ -70,13 +72,15 @@ class Gatherer(multiprocessing.Process):
         pull_s.connect(self.pull)
         push_s.connect(self.push)
 
+        logger.info('connected')
+
         poller = zmq.Poller()
         poller.register(pull_s)
 
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except SystemExit or KeyboardInterrupt:
+            except KeyboardInterrupt:
                 break
 
             if pull_s not in s:
@@ -88,6 +92,7 @@ class Gatherer(multiprocessing.Process):
 
             data = self.process(data)
             Msg(id=id, mtype=mtype, token=token, data=data).send(push_s)
+
 
 
 def main():

@@ -128,9 +128,8 @@ class Router(object):
         logger.info('launching store...')
         self.store_s = self.context.socket(zmq.DEALER)
         self.store_s.bind(store_address)
-        p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
-        p.start()
-        self.store_p = p
+        self.store_p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
+        self.store_p.start()
 
     def _init_frontend(self, listen):
         logger.info('launching frontend...')
