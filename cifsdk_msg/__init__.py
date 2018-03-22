@@ -2,6 +2,7 @@ import ujson as json
 from pprint import pprint
 import msgpack
 import sys
+import zmq
 
 PYVERSION = 2
 if sys.version_info > (3,):
@@ -67,9 +68,14 @@ class Msg(object):
         m = self.to_list()
         s.send_multipart(m)
 
-    def recv(self, s):
+    def recv(self, s, relay=False):
         # assert isinstance(s, zmq.socket)
         m = s.recv_multipart()
+
+        if relay:
+            assert isinstance(relay, zmq.socket)
+            return relay.send_multipart(m)
+
         return self._decode_message(m)
 
     def _decode_message(self, m):

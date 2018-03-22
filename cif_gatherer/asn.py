@@ -2,7 +2,7 @@ import logging
 import os
 import re
 
-from cif.utils import resolve_ns
+from cifsdk.utils.network import resolve_ns
 
 ENABLE_PEERS = os.getenv('CIF_GATHERERS_PEERS_ENABLED', False)
 

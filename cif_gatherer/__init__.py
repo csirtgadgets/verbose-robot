@@ -76,8 +76,7 @@ class Gatherer(multiprocessing.Process):
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except Exception as e:
-                self.logger.error(e)
+            except SystemExit or KeyboardInterrupt:
                 break
 
             if pull_s not in s:

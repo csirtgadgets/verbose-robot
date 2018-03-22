@@ -1,5 +1,5 @@
 
-from cif.utils import resolve_ns
+from cifsdk.utils.network import resolve_ns
 import logging
 import os
 import re

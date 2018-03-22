@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String, DateTime, UnicodeText, Boolean, 
 from sqlalchemy.orm import class_mapper, relationship, backref
 from cifsdk.constants import PYVERSION
 from sqlalchemy.ext.declarative import declarative_base
-from cif.store.plugins.token_plugin import TokenManagerPlugin
+from cif.store.plugin.token import TokenManagerPlugin
 
 logger = logging.getLogger('cif.store.sqlite')
 
@@ -12,6 +12,7 @@ if PYVERSION > 2:
     basestring = (str, bytes)
 
 Base = declarative_base()
+
 
 class Token(Base):
     __tablename__ = 'tokens'
@@ -100,10 +101,10 @@ class TokenManager(TokenManagerPlugin):
             username=data.get('username'),
             token=data['token'],
             acl=acl,
-            read=data.get('read'),
-            write=data.get('write'),
+            read=int(data.get('read', '0')),
+            write=int(data.get('write', '0')),
             expires=data.get('expires'),
-            admin=data.get('admin')
+            admin=int(data.get('admin', '0'))
         )
 
         s.add(t)

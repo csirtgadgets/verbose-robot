@@ -7,19 +7,12 @@ import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import multiprocessing
-import os, traceback
+import os
 from pprint import pprint
+
 from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser
+from .constants import ROUTER_STREAM_ADDR
 
-logger = logging.getLogger(__name__)
-
-SNDTIMEO = 15000
-ZMQ_HWM = 1000000
-
-ROUTER_STREAM_ADDR = os.getenv('CIF_ROUTER_STREAM_ADDR', 'ipc://stream.ipc')
-STREAM_ADDR = os.getenv('CIF_STREAM_ADDR', 'tcp://127.0.0.1:5001')
-
-ENABLED = os.getenv('CIF_STREAMER_ENABLED', False)
 TRACE = os.getenv('CIF_STREAMER_TRACE', False)
 
 logger = logging.getLogger(__name__)
@@ -27,6 +20,9 @@ logger.setLevel(logging.INFO)
 
 if TRACE == '1':
     logger.setLevel(logging.DEBUG)
+
+
+logger = logging.getLogger(__name__)
 
 
 class Streamer(multiprocessing.Process):
@@ -48,7 +44,7 @@ class Streamer(multiprocessing.Process):
         router = context.socket(zmq.PULL)
         publisher = context.socket(zmq.PUB)
 
-        publisher.bind(STREAM_ADDR)
+        publisher.bind(ROUTER_STREAM_ADDR)
         router.connect(ROUTER_STREAM_ADDR)
 
         poller = zmq.Poller()
@@ -72,8 +68,6 @@ class Streamer(multiprocessing.Process):
             publisher.send_multipart(data)
 
             data = json.loads(data[0])
-
-
 
 
 def main():
@@ -106,7 +100,6 @@ def main():
         s.start()
     except KeyboardInterrupt:
         s.stop()
-
 
 
 if __name__ == "__main__":

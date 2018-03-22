@@ -10,11 +10,12 @@ from time import sleep
 import zmq
 import os
 import sys
+from pprint import pprint
 
 from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
-    RUNTIME_PATH
+    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED
 from cifsdk.constants import CONFIG_PATH
-from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setup_runtime_path, read_config
+from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setup_runtime_path
 from cif_hunter import Hunter
 from cif.store import Store
 from cif_gatherer import Gatherer
@@ -35,9 +36,6 @@ ZMQ_HWM = 1000000
 ZMQ_SNDTIMEO = 5000
 ZMQ_RCVTIMEO = 5000
 
-ROUTER_STREAM_ADDR = os.getenv('CIF_ROUTER_STREAM_ADDR', 'ipc://stream.ipc')
-STREAMER_ENABLED = os.getenv('CIF_STREAMER_ENABLED', False)
-
 FRONTEND_TIMEOUT = os.getenv('CIF_FRONTEND_TIMEOUT', 100)
 BACKEND_TIMEOUT = os.getenv('CIF_BACKEND_TIMEOUT', 10)
 
@@ -46,7 +44,7 @@ HUNTER_TOKEN = os.getenv('CIF_HUNTER_TOKEN', None)
 STORE_DEFAULT = os.getenv('CIF_STORE_STORE', STORE_DEFAULT)
 STORE_NODES = os.getenv('CIF_STORE_NODES')
 
-PIDFILE = os.getenv('CIF_ROUTER_PIDFILE', '{}/cif_router.pid'.format(RUNTIME_PATH))
+PIDFILE = os.getenv('CIF_ROUTER_PIDFILE', '%s/cif_router.pid' % RUNTIME_PATH)
 
 TRACE = os.getenv('CIF_ROUTER_TRACE')
 
@@ -65,112 +63,116 @@ class Router(object):
     def __exit__(self, type, value, traceback):
         return self
 
-    def __init__(self, listen=ROUTER_ADDR, hunter=HUNTER_ADDR, store_type=STORE_DEFAULT, store_address=STORE_ADDR,
-                 store_nodes=None, hunter_token=HUNTER_TOKEN, hunter_threads=HUNTER_THREADS,
-                 gatherer_threads=GATHERER_THREADS, test=False):
-
-        self.logger = logging.getLogger(__name__)
-
-        self.context = zmq.Context()
+    def __init__(self, listen=ROUTER_ADDR, store_type=STORE_DEFAULT, store_address=STORE_ADDR, store_nodes=None,
+                 hunter_token=HUNTER_TOKEN, hunter_threads=HUNTER_THREADS, gatherer_threads=GATHERER_THREADS,
+                 test=False):
 
         if test:
             return
 
-        self.store_s = self.context.socket(zmq.DEALER)
-        self.store_s.bind(store_address)
+        self.context = zmq.Context()
 
-        self.store_p = None
-        self._init_store(self.context, store_address, store_type, nodes=store_nodes)
+        self._init_store(store_address, store_type, nodes=store_nodes)
 
-        self.gatherer_s = self.context.socket(zmq.PUSH)
-        self.gatherer_sink_s = self.context.socket(zmq.PULL)
-        self.gatherer_s.bind(GATHERER_ADDR)
-        self.gatherer_sink_s.bind(GATHERER_SINK_ADDR)
         self.gatherers = []
         self._init_gatherers(gatherer_threads)
 
-        self.hunter_sink_s = self.context.socket(zmq.ROUTER)
-        self.hunter_sink_s.bind(HUNTER_SINK_ADDR)
-
-        self.hunters = []
-        self.hunters_s = None
-        if hunter_threads and int(hunter_threads):
-            self.hunters_s = self.context.socket(zmq.PUSH)
-            self.logger.debug('binding hunter: {}'.format(hunter))
-            self.hunters_s.bind(hunter)
+        self.hunters = None
+        if hunter_threads:
             self._init_hunters(hunter_threads, hunter_token)
 
-        self.streamer_s = None
-        if STREAMER_ENABLED:
-            self.logger.debug('enabling streamer..')
-            self.streamer_s = self.context.socket(zmq.PUSH)
-            self.streamer_s.bind(ROUTER_STREAM_ADDR)
-            self.streamer = mp.Process(target=Streamer().start)
-            self.streamer.start()
+        if ROUTER_STREAM_ENABLED:
+            self._init_streamer()
 
-        self.logger.info('launching frontend...')
-        self.frontend_s = self.context.socket(zmq.ROUTER)
-        self.frontend_s.set_hwm(ZMQ_HWM)
-        self.frontend_s.bind(listen)
+        self._init_frontend(listen)
 
         self.count = 0
         self.count_start = time.time()
 
-        self.poller = zmq.Poller()
-        self.poller_backend = zmq.Poller()
-
         self.terminate = False
 
+    def _init_streamer(self):
+        logger.debug('enabling streamer..')
+        self.streamer_s = self.context.socket(zmq.PUSH)
+        self.streamer_s.bind(ROUTER_STREAM_ADDR)
+        self.streamer = mp.Process(target=Streamer().start)
+        self.streamer.start()
+
     def _init_hunters(self, threads, token):
-        self.logger.info('launching hunters...')
+        logger.info('launching hunters...')
+        self.hunter_sink_s = self.context.socket(zmq.ROUTER)
+        self.hunter_sink_s.bind(HUNTER_SINK_ADDR)
+
+        self.hunters_s = None
+        self.hunters_s = self.context.socket(zmq.PUSH)
+        self.hunters_s.bind(HUNTER_ADDR)
+
         for n in range(int(threads)):
             p = mp.Process(target=Hunter(token=token).start)
             p.start()
             self.hunters.append(p)
 
     def _init_gatherers(self, threads):
-        self.logger.info('launching gatherers...')
+        logger.info('launching gatherers...')
+        self.gatherer_s = self.context.socket(zmq.PUSH)
+        self.gatherer_sink_s = self.context.socket(zmq.PULL)
+        self.gatherer_s.bind(GATHERER_ADDR)
+        self.gatherer_sink_s.bind(GATHERER_SINK_ADDR)
+
         for n in range(int(threads)):
             p = mp.Process(target=Gatherer().start)
             p.start()
             self.gatherers.append(p)
 
-    def _init_store(self, context, store_address, store_type, nodes=False):
-        self.logger.info('launching store...')
+    def _init_store(self, store_address, store_type, nodes=False):
+        logger.info('launching store...')
+        self.store_s = self.context.socket(zmq.DEALER)
+        self.store_s.bind(store_address)
         p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
         p.start()
         self.store_p = p
 
+    def _init_frontend(self, listen):
+        logger.info('launching frontend...')
+        self.frontend_s = self.context.socket(zmq.ROUTER)
+        self.frontend_s.set_hwm(ZMQ_HWM)
+        self.frontend_s.bind(listen)
+
     def stop(self):
         self.terminate = True
-        self.logger.info('stopping hunters..')
+
+        logger.debug('stopping hunters')
         for h in self.hunters:
             h.terminate()
 
-        self.logger.info('stopping gatherers')
+        logger.debug('stopping gatherers')
         for g in self.gatherers:
             g.terminate()
 
         self.streamer.terminate()
-
-        self.logger.info('stopping store..')
         self.store_p.terminate()
 
         sleep(0.01)
 
     def start(self):
-        self.logger.debug('starting loop')
+        logger.debug('starting loop')
 
-        self.poller_backend.register(self.hunter_sink_s, zmq.POLLIN)
-        self.poller_backend.register(self.gatherer_sink_s, zmq.POLLIN)
-        self.poller.register(self.store_s, zmq.POLLIN)
-        self.poller.register(self.frontend_s, zmq.POLLIN)
+        poller = zmq.Poller()
+        poller_backend = zmq.Poller()
+
+        poller_backend.register(self.gatherer_sink_s, zmq.POLLIN)
+        poller.register(self.store_s, zmq.POLLIN)
+
+        if self.hunters:
+            poller_backend.register(self.hunter_sink_s, zmq.POLLIN)
+
+        poller.register(self.frontend_s, zmq.POLLIN)
 
         # we use this instead of a loop so we can make sure to get front end queries as they come in
         # that way hunters don't over burden the store, think of it like QoS
         # it's weighted so front end has a higher chance of getting a faster response
         while not self.terminate:
-            items = dict(self.poller.poll(FRONTEND_TIMEOUT))
+            items = dict(poller.poll(FRONTEND_TIMEOUT))
 
             if self.frontend_s in items and items[self.frontend_s] == zmq.POLLIN:
                 self.handle_message(self.frontend_s)
@@ -178,12 +180,12 @@ class Router(object):
             if self.store_s in items and items[self.store_s] == zmq.POLLIN:
                 self.handle_message_store(self.store_s)
 
-            items = dict(self.poller_backend.poll(BACKEND_TIMEOUT))
+            items = dict(poller_backend.poll(BACKEND_TIMEOUT))
 
             if self.gatherer_sink_s in items and items[self.gatherer_sink_s] == zmq.POLLIN:
                 self.handle_message_gatherer(self.gatherer_sink_s)
 
-            if self.hunter_sink_s in items and items[self.hunter_sink_s] == zmq.POLLIN:
+            if self.hunters and self.hunter_sink_s in items and items[self.hunter_sink_s] == zmq.POLLIN:
                 self.handle_message(self.hunter_sink_s)
 
     def _log_counter(self):
@@ -191,7 +193,7 @@ class Router(object):
         if (self.count % 100) == 0:
             t = (time.time() - self.count_start)
             n = self.count / t
-            self.logger.info('processing {} msgs per {} sec'.format(round(n, 2), round(t, 2)))
+            logger.info('processing {} msgs per {} sec'.format(round(n, 2), round(t, 2)))
             self.count = 0
             self.count_start = time.time()
 
@@ -205,7 +207,7 @@ class Router(object):
         try:
             handler(id, mtype, token, data)
         except Exception as e:
-            self.logger.error(e)
+            logger.error(e)
 
         self._log_counter()
 
@@ -214,16 +216,16 @@ class Router(object):
 
     def handle_message_store(self, s):
         # re-routing from store to front end
-        id, mtype, token, data = Msg().recv(s)
-
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.frontend_s)
+        # id, mtype, token, data = Msg().recv(s)
+        # Msg(id=id, mtype=mtype, token=token, data=data).send(self.frontend_s)
+        Msg().recv(s, relay=self.frontend_s)
 
     def handle_message_gatherer(self, s):
         id, token, mtype, data = Msg().recv(s)
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
 
-        if len(self.hunters) == 0:
+        if self.hunters and not ROUTER_STREAM_ENABLED:
             return
 
         data = json.loads(data)
@@ -233,7 +235,7 @@ class Router(object):
         for d in data:
             s = json.dumps(d)
 
-            if STREAMER_ENABLED:
+            if ROUTER_STREAM_ENABLED:
                 self.streamer_s.send_string(s)
 
             if d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
@@ -244,6 +246,9 @@ class Router(object):
 
         if self.hunters:
             self.hunters_s.send_string(data)
+
+        if ROUTER_STREAM_ENABLED:
+            self.streamer_s.send_string(data)
 
     def handle_indicators_create(self, id, mtype, token, data):
         Msg(id=id, mtype=mtype, token=token, data=data).send(self.gatherer_s)
@@ -297,7 +302,13 @@ def main():
 
     args = p.parse_args()
     setup_logging(args)
-    logger = logging.getLogger(__name__)
+
+    if args.verbose:
+        logger.setLevel(logging.INFO)
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
     logger.info('loglevel is: {}'.format(logging.getLevelName(logger.getEffectiveLevel())))
 
     if args.logging_ignore:
@@ -317,16 +328,17 @@ def main():
         logger.critical("%s already exists, exiting" % args.pidfile)
         raise SystemExit
 
-    try:
-        pidfile = open(args.pidfile, 'w')
-        pidfile.write(pid)
-        pidfile.close()
-    except PermissionError as e:
-        logger.error('unable to create pid %s' % args.pidfile)
-
-    with Router(listen=args.listen, hunter=args.hunter, store_type=args.store, store_address=args.store_address,
+    with Router(listen=args.listen, store_type=args.store, store_address=args.store_address,
                 store_nodes=args.store_nodes, hunter_token=args.hunter_token, hunter_threads=args.hunter_threads,
                 gatherer_threads=args.gatherer_threads) as r:
+
+        try:
+            pidfile = open(args.pidfile, 'w')
+            pidfile.write(pid)
+            pidfile.close()
+        except PermissionError as e:
+            logger.error('unable to create pid %s' % args.pidfile)
+
         try:
             logger.info('starting router..')
             r.start()
@@ -343,6 +355,8 @@ def main():
             traceback.print_exc()
 
         r.stop()
+        if os.path.isfile(args.pidfile):
+            os.unlink(args.pidfile)
 
     logger.info('Shutting down')
     if os.path.isfile(args.pidfile):

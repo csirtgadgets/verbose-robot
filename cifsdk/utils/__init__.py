@@ -37,6 +37,7 @@ def read_config(args):
 def get_argument_parser():
     BasicArgs = ArgumentParser(add_help=False)
     BasicArgs.add_argument('-d', '--debug', dest='debug', action="store_true")
+    BasicArgs.add_argument('-v', '--verbose', action='store_true')
     BasicArgs.add_argument('-V', '--version', action='version', version=VERSION)
     BasicArgs.add_argument(
         "--runtime-path", help="specify the runtime path [default %(default)s]", default=RUNTIME_PATH
@@ -46,7 +47,7 @@ def get_argument_parser():
 
 def load_plugin(path, plugin):
     p = None
-    for loader, modname, is_pkg in pkgutil.iter_modules([path]):
+    for loader, modname, is_pkg in pkgutil.iter_modules(path):
         if modname == plugin or modname == 'z{}'.format(plugin):
             p = loader.find_module(modname).load_module(modname)
             p = p.Plugin
@@ -56,7 +57,7 @@ def load_plugin(path, plugin):
 
 def load_plugins(path):
     p = []
-    for loader, modname, is_pkg in pkgutil.iter_modules([path]):
+    for loader, modname, is_pkg in pkgutil.iter_modules(path):
         p.append(loader.find_module(modname).load_module(modname))
 
     return p

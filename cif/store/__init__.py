@@ -92,7 +92,7 @@ class Store(multiprocessing.Process):
 
     def _load_plugin(self, **kwargs):
         logger.debug('store is: {}'.format(self.store))
-        p = load_plugin(cif.store.__path__, __name__)
+        p = load_plugin(cif.store.__path__, self.store)
         self.store = p(**kwargs)
 
     def _check_create_queue(self, last_flushed):
@@ -185,7 +185,7 @@ class Store(multiprocessing.Process):
         self.context = zmq.Context()
         self.router = self.context.socket(zmq.ROUTER)
 
-        self.token_create_admin()
+        self.token_handler.token_create_admin()
 
         self.router.connect(self.store_addr)
 
