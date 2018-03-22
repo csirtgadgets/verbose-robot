@@ -53,6 +53,9 @@ class HTTP(Client):
         self.session.headers['Accept-Encoding'] = 'deflate'
 
     def _check_status(self, resp, expect=200):
+        if resp.status_code == expect:
+            return
+
         if resp.status_code == 400:
             r = json.loads(resp.text)
             raise InvalidSearch(r['message'])
@@ -80,15 +83,13 @@ class HTTP(Client):
             msg = 'unknown: %s' % resp.content
             raise RuntimeError(msg)
 
-    def _get(self, uri, params={}, retry=True):
-        if not uri.startswith('http'):
-            uri = "%s/%s" % (self.remote, uri)
-
+    def __get(self, uri, params):
         resp = self.session.get(uri, params=params, verify=self.verify_ssl, timeout=self.timeout)
         n = RETRIES
         try:
             self._check_status(resp, expect=200)
             n = 0
+            return resp
         except Exception as e:
             if resp.status_code == 429 or resp.status_code in [500, 501, 502, 503, 504]:
                 logger.error(e)
@@ -107,13 +108,9 @@ class HTTP(Client):
             if nn == n:
                 raise CIFBusy('system seems busy.. try again later')
 
-        data = resp.content
+        return resp
 
-        s = (int(resp.headers['Content-Length']) / 1024 / 1024)
-        logger.info('processing %.2f megs' % s)
-
-        msgs = json.loads(data.decode('utf-8'))
-
+    def _check_data(self, msgs):
         if msgs.get('status', False) not in ['success', 'failure']:
             raise RuntimeError(msgs)
 
@@ -128,10 +125,13 @@ class HTTP(Client):
             msgs['data'] = json.loads(msgs['data'])
             msgs['data'] = [r['_source'] for r in msgs['data']['hits']['hits']]
 
-        if isinstance(msgs[data], dict):
+        if not isinstance(msgs['data'], list):
             msgs['data'] = [msgs['data']]
 
         for m in msgs['data']:
+            if not isinstance(m, dict):
+                continue
+
             if not m.get('message'):
                 continue
 
@@ -140,6 +140,22 @@ class HTTP(Client):
             except Exception as e:
                 pass
 
+        return msgs
+
+    def _get(self, uri, params={}, retry=True):
+        if not uri.startswith('http'):
+            uri = "%s/%s/" % (self.remote, uri)
+
+        resp = self.__get(uri, params)
+
+        data = resp.content
+
+        ss = (int(resp.headers['Content-Length']) / 1024 / 1024)
+        logger.info('processing %.2f megs' % ss)
+
+        msgs = json.loads(data.decode('utf-8'))
+
+        msgs = self._check_data(msgs)
         return msgs
 
     def _post(self, uri, data):
@@ -193,11 +209,10 @@ class HTTP(Client):
             uri = "%s/%s" % (self.remote, uri)
 
         params = {f: params[f] for f in params if params.get(f)}
-        if params.get('nolog'):
-            del params['nolog']
 
-        if params.get('limit'):
-            del params['limit']
+        for f in ['nolog', 'limit']:
+            if params.get(f):
+                del params[f]
 
         resp = self.session.delete(uri, data=json.dumps(params), verify=self.verify_ssl, timeout=self.timeout)
         self._check_status(resp)
@@ -214,25 +229,25 @@ class HTTP(Client):
     def ping(self):
         t0 = time.time()
         rv = self._get('ping')
+        if not rv:
+            return
 
-        if rv:
-            rv = (time.time() - t0)
-            logger.debug('return time: %.15f' % rv)
-
+        rv = (time.time() - t0)
+        logger.debug('return time: %.15f' % rv)
         return rv
 
     def ping_write(self):
         t0 = time.time()
         rv = self._post('ping')
+        if not rv:
+            return
 
-        if rv:
-            rv = (time.time() - t0)
-            logger.debug('return time: %.15f' % rv)
-
+        rv = (time.time() - t0)
+        logger.debug('return time: %.15f' % rv)
         return rv
 
     def indicators_search(self, filters):
-        rv = self._get('search', params=filters)
+        rv = self._get('indicators', params=filters)
         return rv['data']
 
     def indicators_create(self, data):

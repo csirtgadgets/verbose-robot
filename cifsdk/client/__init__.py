@@ -14,7 +14,11 @@ class Client(object):
         return Indicator(**kv)
 
     @abc.abstractmethod
-    def ping(self, write=False):
+    def ping(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def ping_write(self):
         raise NotImplementedError
 
     def search(self, data):

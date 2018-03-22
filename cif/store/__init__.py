@@ -201,7 +201,11 @@ class Store(multiprocessing.Process):
 
             if self.router in m:
                 m = Msg().recv(self.router)
-                self.handle_message(m)
+                try:
+                    self.handle_message(m)
+                except Exception as e:
+                    logger.error(e)
+                    logger.debug(m)
 
             last_flushed = self._check_create_queue(last_flushed)
 
@@ -221,10 +225,12 @@ class Store(multiprocessing.Process):
                 Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
                 return
 
-        if mtype.start_with('tokens'):
+        if mtype.startswith('tokens'):
             handler = getattr(self.token_handler, "handle_" + mtype)
-        elif mtype.start_with('ping'):
+
+        elif mtype.startswith('ping'):
             handler = getattr(self.ping_handler, 'handle_%s' % mtype)
+
         else:
             handler = getattr(self, 'handle_%s' % mtype)
 
@@ -233,6 +239,7 @@ class Store(multiprocessing.Process):
             Msg(id=id, client_id=client_id, mtype=mtype, data='0').send(self.router)
             return
 
+        rv = False
         try:
             rv = handler(token, data, id=id, client_id=client_id)
 

@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request
 import re
 
 
@@ -15,42 +15,6 @@ def request_v3():
     if request.headers.get('Accept'):
         if 'vnd.cif.v3+json' in request.headers['Accept']:
             return True
-
-
-def jsonify_unauth(msg='unauthorized'):
-    response = jsonify({
-        "message": msg,
-        "data": []
-    })
-    response.status_code = 401
-    return response
-
-
-def jsonify_unknown(msg='failed', code=503):
-    response = jsonify({
-        "message": msg,
-        "data": []
-    })
-    response.status_code = code
-    return response
-
-
-def jsonify_busy(msg='system is busy, try again later', code=503):
-    response = jsonify({
-        'message': msg,
-        'data': [],
-    })
-    response.status_code = code
-    return response
-
-
-def jsonify_success(data=[], code=200):
-    response = jsonify({
-        'message': 'success',
-        'data': data
-    })
-    response.status_code = code
-    return response
 
 
 def aggregate(data, field='indicator', sort='confidence', sort_secondary='reporttime'):

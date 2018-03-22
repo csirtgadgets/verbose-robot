@@ -65,7 +65,7 @@ app.secret_key = SECRET_KEY
 log_level = logging.WARN
 if TRACE == '1':
     log_level = logging.DEBUG
-    logging.getLogger('flask_cors').level = logging.DEBUG
+    logging.getLogger('flask_cors').level = logging.INFO
 
 console = logging.StreamHandler()
 logging.getLogger('gunicorn.error').setLevel(log_level)
@@ -95,6 +95,15 @@ def echo_socket(ws):
 
         message = router.recv_multipart()
         ws.send(message[0])
+
+import re
+def pull_token():
+    t = None
+    if request.headers.get("Authorization"):
+        t = re.match("^Token token=(\S+)$", request.headers.get("Authorization"))
+        if t:
+            t = t.group(1)
+    return t
 
 
 @app.before_request

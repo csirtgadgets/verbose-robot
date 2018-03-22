@@ -76,33 +76,21 @@ def main():
     args = p.parse_args()
 
     setup_logging(args)
-    logger = logging.getLogger(__name__)
 
-    o = read_config(args)
     options = vars(args)
-    for v in options:
-        if v == 'remote' and options[v] == REMOTE_ADDR and o.get('remote'):
-            options[v] = o['remote']
-        if v == 'token' and o.get('token'):
-            options[v] = o['token']
-        if options[v] is None or options[v] == '':
-            options[v] = o.get(v)
-
-    if not options.get('token'):
-        raise RuntimeError('missing --token')
 
     verify_ssl = True
-    if o.get('no_verify_ssl') or options.get('no_verify_ssl'):
+    if args.no_verify_ssl:
         verify_ssl = False
 
-    if options.get("zmq"):
+    if args.zmq:
         try:
             from cifsdk_zmq import ZMQ as Client
         except ImportError:
             print('MISSING cifsdk_zmq plugin')
             raise SystemExit
 
-        cli = Client(**options)
+        cli = Client(**args)
     else:
         from cifsdk.client.http import HTTP as Client
         if args.remote == 'https://localhost':
@@ -110,7 +98,7 @@ def main():
 
         cli = Client(args.remote, args.token, verify_ssl=verify_ssl)
 
-    if options.get('ping') or options.get('ping_indef'):
+    if args.ping or args.ping_indef:
         logger.info('running ping')
         n = 4
         if args.ping_indef:

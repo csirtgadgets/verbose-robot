@@ -13,8 +13,8 @@ from cifsdk.exceptions import AuthError, CIFConnectionError, TimeoutError, Inval
 from cifsdk.constants import PYVERSION
 from csirtg_indicator import Indicator
 
-SNDTIMEO = os.getenv('ZMQ_SNDTIMEO', 90000)  # 90s
-RCVTIMEO = os.getenv('ZMQ_RCVTIMEO', 90000)  # 90s
+SNDTIMEO = os.getenv('ZMQ_SNDTIMEO', 5000)
+RCVTIMEO = os.getenv('ZMQ_RCVTIMEO', 5000)
 LINGER = 3
 ENCODING_DEFAULT = "utf-8"
 SEARCH_LIMIT = 100
@@ -167,7 +167,10 @@ class ZMQ(Client):
         return self._recv(decode=decode)
 
     def ping(self):
-        return self._send(Msg.PING)
+        try:
+            return self._send(Msg.PING)
+        except zmq.error.Again:
+            raise TimeoutError
 
     def ping_write(self):
         return self._send(Msg.PING_WRITE)
@@ -208,6 +211,3 @@ class ZMQ(Client):
 
     def tokens_edit(self, data):
         return self._send(Msg.TOKENS_EDIT, data)
-
-
-Plugin = ZMQ

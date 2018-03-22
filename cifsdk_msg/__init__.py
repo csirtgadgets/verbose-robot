@@ -73,7 +73,7 @@ class Msg(object):
         m = s.recv_multipart()
 
         if relay:
-            assert isinstance(relay, zmq.socket)
+            assert isinstance(relay, zmq.Socket)
             return relay.send_multipart(m)
 
         return self._decode_message(m)
