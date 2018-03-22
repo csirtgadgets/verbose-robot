@@ -6,14 +6,12 @@
 
 * Performance (Leaner, Faster).
 * Cleaner, Concise APIs
-* Statistical Confidence Model
 * Realtime Streaming and Correlation (PUB/SUB/WebSockets)
 * Native [CSIRTG-EX](https://csirtg.io) Integration
-* Native Graph Support
 * Native Machine Learning (SKLearn) Integration
 * WebHooks Support
-* Statistics API
-* Connected API (Graph)
+* Statistical Confidence Model
+* Native Graph Support
 * Peering Enabled (Zyre)
 
 # Getting Help
