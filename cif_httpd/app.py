@@ -89,6 +89,7 @@ def pull_token():
 
 
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
+# need to thread this out in dev mode
 @sockets.route('/firehose')
 @api.response(401, 'Unauthorized')
 @api.response(200, 'OK')

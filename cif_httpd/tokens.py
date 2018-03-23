@@ -66,7 +66,17 @@ class Token(Resource):
     @api.marshal_with(token)
     def get(self, id):
         """Fetch a Token given its identifier"""
-        return _success()
+
+        try:
+            return Client(ROUTER_ADDR, session['token']).tokens_search(filters={'token': id})
+        except TimeoutError:
+            return api.abort(408)
+
+        except AuthError:
+            return api.abort(401)
+
+        finally:
+            return api.abort(400)
 
     @api.doc('update_token')
     @api.marshal_with(token, code=200, description='Token updated')
