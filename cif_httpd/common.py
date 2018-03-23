@@ -1,20 +1,8 @@
-from flask import request
+from flask import request, _request_ctx_stack
 import re
 
 
-def pull_token():
-    t = None
-    if request.headers.get("Authorization"):
-        t = re.match("^Token token=(\S+)$", request.headers.get("Authorization"))
-        if t:
-            t = t.group(1)
-    return t
 
-
-def request_v3():
-    if request.headers.get('Accept'):
-        if 'vnd.cif.v3+json' in request.headers['Accept']:
-            return True
 
 
 def aggregate(data, field='indicator', sort='confidence', sort_secondary='reporttime'):

@@ -68,12 +68,6 @@ def main():
 
     o = read_config(args)
     options = vars(args)
-    for v in options:
-        if v == 'remote' and options[v] == REMOTE_ADDR and o.get('remote'):
-            options[v] = o['remote']
-
-        if options[v] is None:
-            options[v] = o.get(v)
 
     if not options.get('token'):
         raise RuntimeError('missing --token')
@@ -216,7 +210,9 @@ def main():
         except AuthError:
             logger.error('unauthorized')
         except Exception as e:
-            logger.error('token search failed: {}'.format(e))
+            import traceback
+            traceback.print_exc()
+            print("\ntoken search failed: %s" % e)
         else:
             t = PrettyTable(args.columns.split(','))
             for r in rv:

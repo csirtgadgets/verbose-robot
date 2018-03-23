@@ -1,15 +1,11 @@
 from flask_restplus import Namespace, Resource, fields
-from flask import Request
+from flask import session
 import time
 from cifsdk_zmq import ZMQ as Client
 
 from cifsdk.constants import ROUTER_ADDR
 from cifsdk.exceptions import AuthError, TimeoutError
-# from .common import pull_token
 from pprint import pprint
-
-def pull_token():
-    return True
 
 api = Namespace('ping', description='Ping API')
 
@@ -23,16 +19,12 @@ indicator = api.model('Ping', {
 @api.response(200, 'OK')
 class Ping(Resource):
 
-    def _ping(self, token=pull_token(), write=False):
-        #return {'status': 'success', 'data': time.time()}
-
-        pprint(Request.headers.get("Authorization"))
-
+    def _ping(self, write=False):
         try:
             if write:
-                r = Client(ROUTER_ADDR, token).ping_write()
+                r = Client(ROUTER_ADDR, session['token']).ping_write()
             else:
-                r = Client(ROUTER_ADDR, token).ping()
+                r = Client(ROUTER_ADDR, session['token']).ping()
 
         except TimeoutError:
             return api.abort(408)

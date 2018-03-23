@@ -49,7 +49,6 @@ class HTTP(Client):
         self.session.headers["Accept"] = 'application/vnd.cif.v4+json'
         self.session.headers['User-Agent'] = 'cifsdk-py/{}'.format(VERSION)
         self.session.headers['Authorization'] = 'Token token=' + self.token
-        self.session.headers['Content-Type'] = 'application/json'
         self.session.headers['Accept-Encoding'] = 'deflate'
 
     def _check_status(self, resp, expect=200):
@@ -111,6 +110,9 @@ class HTTP(Client):
         return resp
 
     def _check_data(self, msgs):
+        if isinstance(msgs, list):
+            return msgs
+
         if msgs.get('status', False) not in ['success', 'failure']:
             raise RuntimeError(msgs)
 
@@ -176,7 +178,8 @@ class HTTP(Client):
         # headers = {
         #     'Content-Encoding': 'deflate'
         # }
-        headers = {}
+
+        headers = {'Content-Type': 'application/json'}
         resp = self.session.post(uri, data=data, verify=self.verify_ssl, headers=headers, timeout=self.timeout)
 
         logger.debug(resp.content)
@@ -259,20 +262,16 @@ class HTTP(Client):
         return rv["data"]
 
     def tokens_search(self, filters):
-        rv = self._get('tokens', params=filters)
-        return rv['data']
+        return self._get('tokens', params=filters)
 
     def tokens_delete(self, data):
-        rv = self._delete('tokens', data)
-        return rv['data']
+        return self._delete('tokens', data)
 
     def tokens_create(self, data):
-        rv = self._post('tokens', data)
-        return rv['data']
+        return self._post('tokens', data)
 
     def tokens_edit(self, data):
-        rv = self._patch('tokens', data)
-        return rv['data']
+        return self._patch('tokens', data)
 
 
 Plugin = HTTP

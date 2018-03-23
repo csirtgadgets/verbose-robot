@@ -7,15 +7,16 @@ import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import zmq
+import re
+from pprint import pprint
 
-from flask import Flask, request, _request_ctx_stack
+from flask import Flask, request, _request_ctx_stack, session
 from flask_cors import CORS
 from flask_compress import Compress
 from flask_restplus import Api
 from werkzeug.contrib.fixers import ProxyFix
 from flask_sockets import Sockets
 
-from .common import pull_token
 from .utils import get_argument_parser, setup_logging, setup_runtime_path
 from .constants import HTTP_LISTEN, HTTP_LISTEN_PORT, TRACE, PIDFILE, SECRET_KEY
 
@@ -73,6 +74,23 @@ logging.getLogger('gunicorn.error').addHandler(console)
 logger = logging.getLogger('gunicorn.error')
 
 
+def pull_token():
+    if "Authorization" not in request.headers:
+        return
+
+    t = re.match("^Token token=(\S+)$", request.headers['Authorization'])
+    if not t:
+        return
+
+    return t.group(1)
+
+
+def request_v3():
+    if request.headers.get('Accept'):
+        if 'vnd.cif.v3+json' in request.headers['Accept']:
+            return True
+
+
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
 @sockets.route('/streamer')
 def echo_socket(ws):
@@ -96,14 +114,7 @@ def echo_socket(ws):
         message = router.recv_multipart()
         ws.send(message[0])
 
-import re
-def pull_token():
-    t = None
-    if request.headers.get("Authorization"):
-        t = re.match("^Token token=(\S+)$", request.headers.get("Authorization"))
-        if t:
-            t = t.group(1)
-    return t
+
 
 
 @app.before_request
@@ -129,11 +140,14 @@ def before_request():
         assert request.method == method
 
     t = pull_token()
-    if HTTP_LISTEN == '127.0.0.1':
+    if not t and HTTP_LISTEN == '127.0.0.1':
+        session['token'] = 'TEST-TOKEN'
         return
 
     if not t or t == 'None':
         return api.abort(401)
+
+    session['token'] = t
 
 
 def main():
@@ -180,9 +194,9 @@ def main():
         logger.info('pinging router...')
         logger.info('starting up...')
 
-        # app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
-        server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
-        server.serve_forever()
+        app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
+        # server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
+        # server.serve_forever()
 
     except KeyboardInterrupt:
         logger.info('shutting down...')

@@ -1,4 +1,11 @@
-from flask_restplus import Namespace, Resource, fields
+from flask_restplus import Namespace, Resource, fields, reqparse
+from flask import session
+
+from cifsdk_zmq import ZMQ as Client
+from cifsdk.constants import ROUTER_ADDR
+from cifsdk.exceptions import AuthError, TimeoutError
+
+from pprint import pprint
 
 api = Namespace('tokens', description='Token related operations')
 
@@ -13,7 +20,7 @@ token = api.model('Token', {
 
 
 def _success(data=[]):
-    return {'status': 'success', data: data}
+    return {'status': 'success', 'data': data}
 
 
 def _failure(msg='unknown', data=[]):
@@ -21,13 +28,30 @@ def _failure(msg='unknown', data=[]):
 
 
 @api.route('/')
+@api.response(401, 'Unauthorized')
+@api.response(200, 'OK')
 class TokenList(Resource):
     @api.param('q', 'Search for token by username')
     @api.doc('list_tokens')
     @api.marshal_list_with(token)
     def get(self):
         """List all Tokens"""
-        return _success()
+        parser = reqparse.RequestParser()
+        parser.add_argument('q')
+        args = parser.parse_args()
+
+        try:
+            return Client(ROUTER_ADDR, session['token']).tokens_search(filters={'q': args.q})
+        except TimeoutError:
+            return api.abort(408)
+
+        except AuthError:
+            return api.abort(401)
+
+        if not r:
+            return api.abort(503)
+
+        return api.abort(400)
 
     @api.doc('create_tokens')
     @api.marshal_list_with(token, code=201, description='Token created')
