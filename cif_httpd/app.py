@@ -13,7 +13,7 @@ from pprint import pprint
 from flask import Flask, request, _request_ctx_stack, session
 from flask_cors import CORS
 from flask_compress import Compress
-from flask_restplus import Api
+from flask_restplus import Api, Namespace
 from werkzeug.contrib.fixers import ProxyFix
 from flask_sockets import Sockets
 
@@ -49,11 +49,14 @@ authorizations = {
 api = Api(app, version='4.0', title='CIFv4 API', description='The CIFv4 REST API', authorizations=authorizations,
           security='apikey')
 
+firehose_api = Namespace('firehose', description='Firehose')
+
 APIS = [
     ping_api,
     indicators_api,
     tokens_api,
-    health_api
+    health_api,
+    firehose_api
 ]
 
 for A in APIS:
@@ -85,15 +88,30 @@ def pull_token():
     return t.group(1)
 
 
-def request_v3():
-    if request.headers.get('Accept'):
-        if 'vnd.cif.v3+json' in request.headers['Accept']:
-            return True
-
-
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
-@sockets.route('/streamer')
-def echo_socket(ws):
+@sockets.route('/firehose')
+@api.response(401, 'Unauthorized')
+@api.response(200, 'OK')
+@api.doc('firehose')
+def firehose(ws):
+    """Firehose"""
+    from cifsdk_zmq import ZMQ as Client
+    from cifsdk.constants import ROUTER_ADDR
+    from cifsdk.exceptions import AuthError, TimeoutError
+    # check authorization
+
+    t = pull_token()
+
+    try:
+        r = Client(ROUTER_ADDR, t).tokens_search(filters={'q': t})
+    except TimeoutError:
+        return api.abort(408)
+
+    except AuthError:
+        return api.abort(401)
+
+    if not r:
+        return api.abort(503)
 
     ctx = zmq.Context()
     router = ctx.socket(zmq.SUB)
@@ -105,7 +123,7 @@ def echo_socket(ws):
     while not ws.closed:
         try:
             s = dict(poller.poll(1000))
-        except SystemExit or KeyboardInterrupt:
+        except KeyboardInterrupt or SystemExit:
             break
 
         if router not in s:
@@ -113,9 +131,6 @@ def echo_socket(ws):
 
         message = router.recv_multipart()
         ws.send(message[0])
-
-
-
 
 @app.before_request
 def before_request():
@@ -194,9 +209,9 @@ def main():
         logger.info('pinging router...')
         logger.info('starting up...')
 
-        app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
-        # server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
-        # server.serve_forever()
+        # app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
+        server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
+        server.serve_forever()
 
     except KeyboardInterrupt:
         logger.info('shutting down...')
@@ -207,6 +222,8 @@ def main():
 
     if os.path.isfile(PIDFILE):
         os.unlink(PIDFILE)
+
+    server.stop()
 
 
 if __name__ == "__main__":

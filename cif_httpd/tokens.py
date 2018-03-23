@@ -48,10 +48,8 @@ class TokenList(Resource):
         except AuthError:
             return api.abort(401)
 
-        if not r:
-            return api.abort(503)
-
-        return api.abort(400)
+        finally:
+            return api.abort(400)
 
     @api.doc('create_tokens')
     @api.marshal_list_with(token, code=201, description='Token created')
