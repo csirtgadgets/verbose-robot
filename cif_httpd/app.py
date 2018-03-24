@@ -210,9 +210,9 @@ def main():
         logger.info('pinging router...')
         logger.info('starting up...')
 
-        # app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
-        server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
-        server.serve_forever()
+        app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
+        # server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
+        # server.serve_forever()
 
     except KeyboardInterrupt:
         logger.info('shutting down...')
@@ -223,8 +223,6 @@ def main():
 
     if os.path.isfile(PIDFILE):
         os.unlink(PIDFILE)
-
-    server.stop()
 
 
 if __name__ == "__main__":

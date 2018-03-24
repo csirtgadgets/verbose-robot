@@ -84,6 +84,7 @@ class HTTP(Client):
 
     def __get(self, uri, params):
         resp = self.session.get(uri, params=params, verify=self.verify_ssl, timeout=self.timeout)
+        logger.debug(resp.text)
         n = RETRIES
         try:
             self._check_status(resp, expect=200)
@@ -162,7 +163,7 @@ class HTTP(Client):
 
     def _post(self, uri, data):
         if not uri.startswith('http'):
-            uri = "%s/%s" % (self.remote, uri)
+            uri = "%s/%s/" % (self.remote, uri)
 
         if type(data) == dict:
             data = json.dumps(data)
@@ -209,7 +210,7 @@ class HTTP(Client):
 
     def _delete(self, uri, params={}):
         if not uri.startswith('http'):
-            uri = "%s/%s" % (self.remote, uri)
+            uri = "%s/%s/" % (self.remote, uri)
 
         params = {f: params[f] for f in params if params.get(f)}
 
@@ -223,7 +224,7 @@ class HTTP(Client):
 
     def _patch(self, uri, data):
         if not uri.startswith('http'):
-            uri = "%s/%s" % (self.remote, uri)
+            uri = "%s/%s/" % (self.remote, uri)
 
         resp = self.session.patch(uri, data=json.dumps(data))
         self._check_status(resp)

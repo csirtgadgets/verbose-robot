@@ -214,6 +214,7 @@ class Store(multiprocessing.Process):
 
     def handle_message(self, m):
         err = None
+        logger.debug(m)
         id, client_id, token, mtype, data = m
 
         if isinstance(data, basestring):

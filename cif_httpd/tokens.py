@@ -1,5 +1,5 @@
 from flask_restplus import Namespace, Resource, fields, reqparse
-from flask import session
+from flask import session, request
 
 from cifsdk_zmq import ZMQ as Client
 from cifsdk.constants import ROUTER_ADDR
@@ -12,10 +12,12 @@ api = Namespace('tokens', description='Token related operations')
 token = api.model('Token', {
     'id': fields.String(required=True, description='The token id'),
     'token': fields.String(required=True, description='The token'),
-    'user': fields.String(required=True, description='user associated with the token'),
+    'username': fields.String(required=True, description='user associated with the token'),
     'write': fields.Boolean(default=False),
     'read': fields.Boolean(default=True),
     'expires_at': fields.DateTime(description='set a key expiration date'),
+    'groups': fields.List(fields.String, description='Groups a token belongs to'),
+    'acl': fields.String(),
 })
 
 
@@ -40,22 +42,55 @@ class TokenList(Resource):
         parser.add_argument('q')
         args = parser.parse_args()
 
+        f = {}
+        if args.q:
+            f = {'q': args.q}
+
+        # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_search(filters={'q': args.q})
+            return Client(ROUTER_ADDR, session['token']).tokens_search(filters=f)
         except TimeoutError:
             return api.abort(408)
 
         except AuthError:
             return api.abort(401)
 
-        finally:
+        else:
             return api.abort(400)
 
     @api.doc('create_tokens')
     @api.marshal_list_with(token, code=201, description='Token created')
-    def post(self, data):
+    def post(self):
         """Create a Token"""
-        return _success()
+
+        # noinspection PyUnreachableCode
+        try:
+            return Client(ROUTER_ADDR, session['token']).tokens_create(request.data)
+        except TimeoutError:
+            return api.abort(408)
+
+        except AuthError:
+            return api.abort(401)
+
+        else:
+            return api.abort(400)
+
+    @api.doc('delete_token')
+    @api.response(204, 'Deleted')
+    def delete(self):
+        """Delete a Token given its identifier"""
+
+        # noinspection PyUnreachableCode
+        try:
+            return Client(ROUTER_ADDR, session['token']).tokens_delete(request.data)
+        except TimeoutError:
+            return api.abort(408)
+
+        except AuthError:
+            return api.abort(401)
+
+        else:
+            return api.abort(400)
 
 
 @api.route('/<id>')
@@ -67,25 +102,31 @@ class Token(Resource):
     def get(self, id):
         """Fetch a Token given its identifier"""
 
+        # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_search(filters={'token': id})
+            return Client(ROUTER_ADDR, session['token']).tokens_search(filters={'id': id})
         except TimeoutError:
             return api.abort(408)
 
         except AuthError:
             return api.abort(401)
 
-        finally:
+        else:
             return api.abort(400)
 
     @api.doc('update_token')
     @api.marshal_with(token, code=200, description='Token updated')
     def post(self, data):
         """Update a Token"""
-        return _success()
 
-    @api.doc('delete_token')
-    @api.response(204, 'Deleted')
-    def delete(self, id):
-        """Delete a Token given its identifier"""
-        return _success()
+        # noinspection PyUnreachableCode
+        try:
+            return Client(ROUTER_ADDR, session['token']).tokens_update(request.data)
+        except TimeoutError:
+            return api.abort(408)
+
+        except AuthError:
+            return api.abort(401)
+
+        else:
+            return api.abort(400)
