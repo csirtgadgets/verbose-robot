@@ -11,11 +11,15 @@ import random
 from cifsdk.exceptions import AuthError, TimeoutError, NotFound, SubmissionFailed, InvalidSearch, CIFBusy
 from cifsdk.constants import VERSION, PYVERSION
 from cifsdk.client import Client
+from csirtg_indicator import Indicator
 
 TRACE = os.environ.get('CIFSDK_CLIENT_HTTP_TRACE')
 TIMEOUT = os.getenv('CIFSDK_CLIENT_HTTP_TIMEOUT', 120)
 RETRIES = os.getenv('CIFSDK_CLIENT_HTTP_RETRIES', 5)
 RETRIES_DELAY = os.getenv('CIFSDK_CLIENT_HTTP_RETRIES_DELAY', '30,60')
+
+REMOTE = os.getenv('CIF_REMOTE', 'http://localhost:5000')
+TOKEN = os.getenv('CIF_TOKEN')
 
 if PYVERSION == 3:
     basestring = (str, bytes)
@@ -37,7 +41,13 @@ if TRACE:
 
 class HTTP(Client):
 
-    def __init__(self, remote, token, proxy=None, timeout=int(TIMEOUT), verify_ssl=True, **kwargs):
+    def __init__(self, remote=REMOTE, token=TOKEN, proxy=None, timeout=int(TIMEOUT), verify_ssl=True, **kwargs):
+        if remote is None:
+            remote = 'http://localhost:5000'
+
+        if token is None:
+            token = os.getenv('CIF_TOKEN')
+
         super(HTTP, self).__init__(remote, token, **kwargs)
 
         self.proxy = proxy
@@ -161,12 +171,11 @@ class HTTP(Client):
         msgs = self._check_data(msgs)
         return msgs
 
-    def _post(self, uri, data):
+    def _post(self, uri, data, expect=201):
         if not uri.startswith('http'):
             uri = "%s/%s/" % (self.remote, uri)
 
-        if type(data) == dict:
-            data = json.dumps(data)
+        data = json.dumps(data)
 
         if self.nowait:
             uri = '{}?nowait=1'.format(uri)
@@ -177,16 +186,18 @@ class HTTP(Client):
         #TODO test? does this happen automagically?
         # data = zlib.compress(data)
         # headers = {
-        #     'Content-Encoding': 'deflate'
+        #     'Content-Encoding': 'deflate',
+        #     'Content-Type': 'application/json'
         # }
 
         headers = {'Content-Type': 'application/json'}
+        logger.debug('submitting')
         resp = self.session.post(uri, data=data, verify=self.verify_ssl, headers=headers, timeout=self.timeout)
-
         logger.debug(resp.content)
+        logger.debug(resp.status_code)
         n = RETRIES
         try:
-            self._check_status(resp, expect=201)
+            self._check_status(resp, expect=expect)
             n = 0
         except Exception as e:
             if resp.status_code == 429 or resp.status_code in [500, 501, 502, 503, 504]:
@@ -230,7 +241,7 @@ class HTTP(Client):
         self._check_status(resp)
         return json.loads(resp.content)
 
-    def ping(self):
+    def ping(self, write=False):
         t0 = time.time()
         rv = self._get('ping')
         if not rv:
@@ -242,7 +253,7 @@ class HTTP(Client):
 
     def ping_write(self):
         t0 = time.time()
-        rv = self._post('ping')
+        rv = self._post('ping', data=[], expect=200)
         if not rv:
             return
 
@@ -255,6 +266,15 @@ class HTTP(Client):
         return rv['data']
 
     def indicators_create(self, data):
+        if isinstance(data, Indicator):
+            data = data.__dict__()
+
+        if type(data) == dict:
+            data = [data]
+
+        if isinstance(data, list) and isinstance(data[0], Indicator):
+            data = [i.__dict__() for i in data]
+
         rv = self._post('indicators', data)
         return rv["data"]
 

@@ -42,16 +42,14 @@ class Gatherer(multiprocessing.Process):
         sleep(0.01)
 
     def process(self, data):
-        rv = []
         if isinstance(data, dict):
             data = [data]
 
+        indicators = [Indicator(**d) for d in data]
         for g in self.gatherers:
-            for d in data:
-                i = Indicator(**d)
+            for i in indicators:
                 try:
                     g.process(i)
-                    rv.append(i.__dict__())
                 except Exception as e:
                     from pprint import pprint
                     pprint(i)
@@ -60,7 +58,7 @@ class Gatherer(multiprocessing.Process):
                     logger.error(e)
                     traceback.print_exc()
 
-        return rv
+        return [i.__dict__() for i in indicators]
 
     def start(self):
         context = zmq.Context()

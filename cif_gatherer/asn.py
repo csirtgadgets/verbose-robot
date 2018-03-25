@@ -11,7 +11,7 @@ def _resolve(data):
     return resolve_ns('{}.{}'.format(data, 'origin.asn.cymru.com'), t='TXT')
 
 
-def process(self, indicator):
+def process(indicator):
     if not ENABLE_PEERS:
         return
 
@@ -33,7 +33,7 @@ def process(self, indicator):
     i = list(reversed(i.split('.')))
     i = '0.{}.{}.{}'.format(i[1], i[2], i[3])
 
-    answers = self._resolve(i)
+    answers = _resolve(i)
 
     if len(answers) == 0:
         return
@@ -43,7 +43,6 @@ def process(self, indicator):
     # 701 1239 3549 3561 7132 | 216.90.108.0/24 | US | arin | 1998-09-25
 
     # i.asn_desc ????
-    self.logger.debug(answers[0])
     bits = str(answers[0]).replace('"', '').strip().split(' | ')
     asns = bits[0].split(' ')
 

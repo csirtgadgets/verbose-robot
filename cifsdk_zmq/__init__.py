@@ -173,7 +173,10 @@ class ZMQ(Client):
             raise TimeoutError
 
     def ping_write(self):
-        return self._send(Msg.PING_WRITE)
+        try:
+            return self._send(Msg.PING_WRITE)
+        except zmq.error.Again:
+            raise TimeoutError
 
     def indicators_search(self, filters, decode=True):
         return self._send(Msg.INDICATORS_SEARCH, json.dumps(filters), decode=decode)

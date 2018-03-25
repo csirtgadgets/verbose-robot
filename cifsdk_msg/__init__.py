@@ -3,6 +3,16 @@ from pprint import pprint
 import msgpack
 import sys
 import zmq
+import logging
+import os
+
+TRACE = os.getenv('CIFSDK_MSG_TRACE', False)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
+
+if TRACE == '1':
+    logger.setLevel(logging.DEBUG)
 
 PYVERSION = 2
 if sys.version_info > (3,):
@@ -66,6 +76,7 @@ class Msg(object):
     def send(self, s):
         # assert isinstance(s, zmq.socket)
         m = self.to_list()
+        logger.debug(m)
         s.send_multipart(m)
 
     def recv(self, s, relay=False):

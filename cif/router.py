@@ -77,7 +77,7 @@ class Router(object):
         self.gatherers = []
         self._init_gatherers(gatherer_threads)
 
-        self.hunters = None
+        self.hunters = False
         if hunter_threads:
             self._init_hunters(hunter_threads, hunter_token)
 
@@ -99,6 +99,9 @@ class Router(object):
         self.streamer.start()
 
     def _init_hunters(self, threads, token):
+        if threads == 0:
+            return
+
         logger.info('launching hunters...')
         self.hunter_sink_s = self.context.socket(zmq.ROUTER)
         self.hunter_sink_s.bind(HUNTER_SINK_ADDR)
@@ -216,7 +219,7 @@ class Router(object):
     def handle_message_store(self, s):
         # re-routing from store to front end
         # id, mtype, token, data = Msg().recv(s)
-        # Msg(id=id, mtype=mtype, token=token, data=data).send(self.frontend_s)
+        # logger.debug('relaying..')
         Msg().recv(s, relay=self.frontend_s)
 
     def handle_message_gatherer(self, s):
@@ -224,9 +227,10 @@ class Router(object):
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
 
-        if self.hunters and not ROUTER_STREAM_ENABLED:
+        if self.hunters is False and not ROUTER_STREAM_ENABLED:
             return
 
+        logger.debug('wati what?"')
         data = json.loads(data)
         if isinstance(data, dict):
             data = [data]

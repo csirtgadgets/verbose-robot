@@ -195,11 +195,11 @@ class Store(multiprocessing.Process):
         last_flushed = time.time()
         while not self.exit.is_set():
             try:
-                m = dict(poller.poll(1000))
+                s = dict(poller.poll(1000))
             except KeyboardInterrupt:
                 break
 
-            if self.router in m:
+            if self.router in s:
                 m = Msg().recv(self.router)
                 try:
                     self.handle_message(m)
@@ -353,6 +353,7 @@ class Store(multiprocessing.Process):
             self._check_indicator(data, t)
             self._cleanup_indicator(data)
 
+            logger.debug('queuing indicator...')
             return self._queue_indicator(token, data, client_id)
 
         # more than one, send it..
