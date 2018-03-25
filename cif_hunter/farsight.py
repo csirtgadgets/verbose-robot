@@ -6,7 +6,8 @@ from pprint import pprint
 from csirtg_indicator import Indicator
 from csirtg_dnsdb.client import Client
 from csirtg_dnsdb.exceptions import QuotaLimit
-from .constants import ENABLED
+import os
+ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 TOKEN = os.environ.get('FARSIGHT_TOKEN')
 PROVIDER = os.environ.get('FARSIGHT_PROVIDER', 'dnsdb.info')

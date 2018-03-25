@@ -12,7 +12,9 @@ import os, traceback
 from cifsdk_zmq import Client
 from cif.constants import HUNTER_ADDR, ROUTER_ADDR, HUNTER_SINK_ADDR
 from csirtg_indicator import Indicator
-from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser
+from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser, load_plugins
+import cif_hunter
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +34,8 @@ if TRACE in [1, '1']:
 
 class Hunter(multiprocessing.Process):
 
-    def __init__(self, remote=HUNTER_ADDR, router=ROUTER_ADDR, token=None):
+    def __init__(self, token=None):
         multiprocessing.Process.__init__(self)
-        self.hunters = remote
-        self.router = HUNTER_SINK_ADDR
         self.token = token
         self.exit = multiprocessing.Event()
         self.exclude = {}
@@ -50,31 +50,18 @@ class Hunter(multiprocessing.Process):
                 logger.debug('setting hunter to skip: {}/{}'.format(provider, tag))
                 self.exclude[provider].add(tag)
 
-    def _load_plugins(self):
-        import pkgutil
-        logger.debug('loading plugins...')
-        plugins = []
-        for loader, modname, is_pkg in pkgutil.iter_modules(cif.hunter.__path__, 'cif_hunter.'):
-            p = loader.find_module(modname).load_module(modname)
-            plugins.append(p)
-            logger.debug('plugin loaded: {}'.format(modname))
-
-        return plugins
-
     def terminate(self):
         self.exit.set()
 
     def start(self):
-        router = Client(remote=self.router, token=self.token, nowait=True)
-        plugins = self._load_plugins()
+        router = Client(remote=ROUTER_ADDR, token=self.token, nowait=True)
+        plugins = load_plugins(cif_hunter.__path__)
         socket = zmq.Context().socket(zmq.PULL)
 
         socket.SNDTIMEO = SNDTIMEO
         socket.set_hwm(ZMQ_HWM)
 
-        logger.debug('connecting to {}'.format(self.hunters))
-        socket.connect(self.hunters)
-        logger.debug('starting hunter')
+        socket.connect(HUNTER_ADDR)
 
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)

@@ -110,6 +110,7 @@ class Router(object):
         self.hunters_s = self.context.socket(zmq.PUSH)
         self.hunters_s.bind(HUNTER_ADDR)
 
+        self.hunters = []
         for n in range(int(threads)):
             p = mp.Process(target=Hunter(token=token).start)
             p.start()

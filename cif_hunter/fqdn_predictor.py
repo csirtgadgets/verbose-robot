@@ -1,7 +1,11 @@
 import arrow
 
 from csirtg_indicator import Indicator
-from csirtg_domainsml import predict
+
+try:
+    from csirtg_domainsml import predict
+except:
+    pass
 
 
 def process(i):

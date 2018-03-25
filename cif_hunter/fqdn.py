@@ -5,8 +5,9 @@ from dns.resolver import Timeout
 from csirtg_indicator import resolve_itype
 from csirtg_indicator.exceptions import InvalidIndicator
 import arrow
+import os
 
-from .constants import ENABLED
+ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
 def is_subdomain(i):

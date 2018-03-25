@@ -1,7 +1,10 @@
 import arrow
 
 from csirtg_indicator import Indicator
-from csirtg_urlsml import predict
+try:
+    from csirtg_urlsml import predict
+except:
+    pass
 
 
 def process(i):

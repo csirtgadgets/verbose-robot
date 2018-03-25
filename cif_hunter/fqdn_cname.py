@@ -6,10 +6,11 @@ from csirtg_indicator import resolve_itype
 from csirtg_indicator.exceptions import InvalidIndicator
 from cifsdk.utils.network import resolve_ns
 from csirtg_indicator import Indicator
-from .constants import ENABLED
+import os
+ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
-def process(self, i, router):
+def process(i, router):
     if not ENABLED:
         return
 

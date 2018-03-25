@@ -7,7 +7,8 @@ import os
 from csirtg_indicator import Indicator
 
 from cifsdk.utils.network import resolve_ns
-from .constants import ENABLED
+import os
+ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 CONFIDENCE = 9
 PROVIDER = 'spamhaus.org'

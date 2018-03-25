@@ -38,8 +38,8 @@ CODES = {
         'description': 'Spamhaus DROP/EDROP Data',
     },
 }
-
-from .constants import ENABLED
+import os
+ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
 def _resolve(data):
@@ -50,7 +50,7 @@ def _resolve(data):
         return data[0]
 
 
-def process(self, i):
+def process(i):
     if not ENABLED:
         return
 
@@ -61,7 +61,7 @@ def process(self, i):
         return
 
     try:
-        r = self._resolve(i.indicator)
+        r = _resolve(i.indicator)
     except Exception as e:
         return
 
