@@ -151,7 +151,7 @@ def main():
 
     try:
         h.start()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt or SystemExit:
         h.stop()
 
 
