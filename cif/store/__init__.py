@@ -272,7 +272,7 @@ class Store(multiprocessing.Process):
         except Exception as e:
             logger.error(e)
             traceback.print_exc()
-            data = json.dumps({'status': 'failed', 'message': 'feed to large, retry the query'})
+            data = json.dumps({'status': 'failed', 'message': 'feed too large, retry the query'})
 
         Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
 

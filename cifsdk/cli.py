@@ -37,7 +37,7 @@ def main():
     p.add_argument('--itype', help='filter by indicator type')  ## need to fix sqlite for non-ascii stuff first
     p.add_argument("--submit", action="store_true", help="submit an indicator")
     p.add_argument('--limit', help='limit results [default %(default)s]', default=SEARCH_LIMIT)
-    p.add_argument('--reporttime', help='specify reporttime filter')
+    p.add_argument('--report_at', help='specify reporttime filter')
     p.add_argument('-n', '--nolog', help='do not log search', action='store_true')
     p.add_argument('-f', '--format', help='specify output format [default: %(default)s]"', default=FORMAT, choices=FORMATS.keys())
 
@@ -47,8 +47,6 @@ def main():
     p.add_argument('--confidence', help="specify confidence level")
 
     p.add_argument("--zmq", help="use zmq as a transport instead of http", action="store_true")
-
-    p.add_argument('--config', help='specify config file [default %(default)s]', default=CONFIG_PATH)
 
     p.add_argument('--feed', action='store_true')
 
@@ -190,8 +188,10 @@ def main():
         if args.limit == SEARCH_LIMIT:
             filters['limit'] = FEED_LIMIT
 
+        filters['feed'] = '1'
+
         try:
-            rv = cli.feed(filters=filters)
+            rv = cli.indicators_search(filters=filters)
 
         except AuthError as e:
             logger.error('unauthorized')

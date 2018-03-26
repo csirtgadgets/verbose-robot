@@ -50,9 +50,9 @@ class Indicator(Base):
     asn = Column(Float)
     cc = Column(String, index=True)
     protocol = Column(Integer)
-    reporttime = Column(DateTime, index=True)
-    firsttime = Column(DateTime)
-    lasttime = Column(DateTime, index=True)
+    reported_at = Column(DateTime, index=True)
+    first_at = Column(DateTime)
+    last_at = Column(DateTime, index=True)
     confidence = Column(Float, index=True)
     probability = Column(Float, index=True)
     timezone = Column(String)
@@ -88,17 +88,17 @@ class Indicator(Base):
         self.uuid = kwargs.get('uuid')
         self.indicator = kwargs.get('indicator')
         self.group = kwargs.get('group', 'everyone')
-        self.itype = kwargs.get('indicator')
-        self.tlp = kwargs.get('indicator')
-        self.provider = kwargs.get('indicator')
+        self.itype = kwargs.get('itype')
+        self.tlp = kwargs.get('tlp')
+        self.provider = kwargs.get('provider')
         self.portlist = str(kwargs.get('portlist', None))
         self.asn = kwargs.get('asn')
         self.asn_desc = kwargs.get('asn_desc')
         self.cc = kwargs.get('cc')
         self.protocol = kwargs.get('protocol')
-        self.reporttime = kwargs.get('reporttime')
-        self.firsttime = kwargs.get('firsttime')
-        self.lasttime = kwargs.get('lasttime')
+        self.reported_at = kwargs.get('reported_at')
+        self.first_at = kwargs.get('first_at')
+        self.last_at = kwargs.get('last_at')
         self.confidence = kwargs.get('confidence')
         self.probability = kwargs.get('probability')
         self.reference = kwargs.get('reference')
@@ -116,14 +116,14 @@ class Indicator(Base):
         self.region = kwargs.get('region')
         self.related = kwargs.get('related')
 
-        if self.reporttime and isinstance(self.reporttime, basestring):
-            self.reporttime = arrow.get(self.reporttime).datetime
+        if self.reported_at and isinstance(self.reported_at, basestring):
+            self.reported_at = arrow.get(self.reported_at).datetime
 
-        if self.lasttime and isinstance(self.lasttime, basestring):
-            self.lasttime = arrow.get(self.lasttime).datetime
+        if self.last_at and isinstance(self.last_at, basestring):
+            self.last_at = arrow.get(self.last_at).datetime
 
-        if self.firsttime and isinstance(self.firsttime, basestring):
-            self.firsttime = arrow.get(self.firsttime).datetime
+        if self.first_at and isinstance(self.first_at, basestring):
+            self.first_at = arrow.get(self.first_at).datetime
 
         if self.peers is not None:
             self.peers = json.dumps(self.peers)
@@ -231,8 +231,12 @@ class IndicatorManager(IndicatorManagerPlugin):
     def to_dict(self, obj):
         d = {}
         for col in class_mapper(obj.__class__).mapped_table.c:
-            d[col.name] = getattr(obj, col.name)
-            if d[col.name] and col.name.endswith('time'):
+            a = getattr(obj, col.name)
+            if a is None or a == 'None' or a == '':
+                continue
+
+            d[col.name] = a
+            if d[col.name] and (col.name.endswith('time') or col.name.endswith('_at')):
                 d[col.name] = getattr(obj, col.name).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
         try:
@@ -336,19 +340,16 @@ class IndicatorManager(IndicatorManagerPlugin):
     def _filter_terms(self, filters, s):
 
         for k, v in filters.items():
-            if k in ['nolog', 'days', 'hours', 'groups', 'limit']:
+            if k in ['nolog', 'days', 'hours', 'groups', 'limit', 'feed']:
                 continue
 
-            if k == 'reporttime':
+            if k == 'reported_at':
                 if ',' in v:
                     start, end = v.split(',')
-                    s = s.filter(Indicator.reporttime >= arrow.get(start).datetime)
-                    s = s.filter(Indicator.reporttime <= arrow.get(end).datettime)
+                    s = s.filter(Indicator.reported_at >= arrow.get(start).datetime)
+                    s = s.filter(Indicator.reported_at <= arrow.get(end).datettime)
                 else:
-                    s = s.filter(Indicator.reporttime >= arrow.get(v).datetime)
-
-            elif k == 'reporttimeend':
-                s = s.filter(Indicator.reporttime <= v)
+                    s = s.filter(Indicator.reported_at >= arrow.get(v).datetime)
 
             elif k == 'tags':
                 t = v.split(',')
@@ -431,25 +432,26 @@ class IndicatorManager(IndicatorManagerPlugin):
         return self._filter_groups({}, token, s)
 
     def _cleanup_timestamps(self, i):
-        if not i.get('lasttime'):
-            i['lasttime'] = arrow.utcnow().datetime.replace(tzinfo=None)
+        if not i.get('last_at'):
+            i['last_at'] = arrow.utcnow().datetime.replace(tzinfo=None)
 
-        if not i.get('reporttime'):
-            i['reporttime'] = arrow.utcnow().datetime.replace(tzinfo=None)
+        if not i.get('reported_at'):
+            i['reported_at'] = arrow.utcnow().datetime.replace(tzinfo=None)
 
         if PYVERSION == 2:
-            i['lasttime'] = arrow.get(i['lasttime']).datetime.replace(tzinfo=None)
-            i['reporttime'] = arrow.get(i['reporttime']).datetime.replace(tzinfo=None)
+            i['last_at'] = arrow.get(i['last_at']).datetime.replace(tzinfo=None)
+            i['reported_at'] = arrow.get(i['reported_at']).datetime.replace(tzinfo=None)
 
-        if not i.get('firsttime'):
-            i['firsttime'] = i['lasttime']
+        if not i.get('first_at'):
+            i['first_at'] = i['last_at']
 
     def search(self, token, filters, limit=500):
         s = self._search(filters, token)
 
         limit = filters.pop('limit', limit)
+        filters.pop('feed')
 
-        rv = s.order_by(desc(Indicator.reporttime)).limit(limit)
+        rv = s.order_by(desc(Indicator.reported_at)).limit(limit)
 
         return [self.to_dict(i) for i in rv]
 
@@ -529,7 +531,7 @@ class IndicatorManager(IndicatorManagerPlugin):
                 provider=d['provider'],
                 itype=d['itype'],
                 indicator=d['indicator'],
-            ).order_by(Indicator.lasttime.desc())
+            ).order_by(Indicator.last_at.desc())
 
             if d.get('rdata'):
                 i = i.filter_by(rdata=d['rdata'])
@@ -563,16 +565,16 @@ class IndicatorManager(IndicatorManagerPlugin):
             r = i.first()
 
             # if the record exists..
-            if r and d.get('lasttime') and arrow.get(d['lasttime']).datetime <= arrow.get(r.lasttime).datetime:
+            if r and d.get('last_at') and arrow.get(d['last_at']).datetime <= arrow.get(r.last_at).datetime:
                 logger.debug('skipping: %s' % d['indicator'])
                 continue
 
             if r:
                 r.count += 1
-                r.lasttime = arrow.get(d['lasttime']).datetime.replace(tzinfo=None)
+                r.last_at = arrow.get(d['last_at']).datetime.replace(tzinfo=None)
 
-                r.reporttime = d.get('reporttime', arrow.utcnow().datetime)
-                r.reporttime = arrow.get(r.reporttime).datetime.replace(tzinfo=None)
+                r.reported_at = d.get('reported_at', arrow.utcnow().datetime)
+                r.reported_at = arrow.get(r.reported_at).datetime.replace(tzinfo=None)
 
                 if d.get('message'):
                     m = Message(message=d['message'], indicator=r)
@@ -584,7 +586,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             # check to see if it's been added in the cache
             if cached_added.get(d['indicator']):
-                if d.get('lasttime') in cached_added[d['indicator']]:
+                if d.get('last_at') in cached_added[d['indicator']]:
                     logger.debug('skipping: %s' % d['indicator'])
                     continue
 
@@ -607,7 +609,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             self._upsert_itype(s, ii)
 
             n += 1
-            cached_added[d['indicator']].add(d['lasttime'])
+            cached_added[d['indicator']].add(d['last_at'])
 
         logger.debug('committing')
         start = time.time()

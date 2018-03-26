@@ -263,7 +263,7 @@ class HTTP(Client):
 
     def indicators_search(self, filters):
         rv = self._get('indicators', params=filters)
-        return rv['data']
+        return rv
 
     def indicators_create(self, data):
         if isinstance(data, Indicator):

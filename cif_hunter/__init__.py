@@ -110,9 +110,6 @@ class Hunter(multiprocessing.Process):
                             logger.debug('skipping: {}'.format(d.indicator))
 
                 for p in plugins:
-                    if p.is_advanced:
-                        if not HUNTER_ADVANCED:
-                            continue
                     try:
                         rv = p.process(d)
                         if rv and len(rv) > 0:

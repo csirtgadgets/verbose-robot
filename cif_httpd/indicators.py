@@ -3,7 +3,7 @@ import logging
 from flask_restplus import Namespace, Resource, fields
 from flask import request, session
 
-from cifsdk.constants import ROUTER_ADDR
+from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
 from cifsdk_zmq import ZMQ as Client
 from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
 from pprint import pprint
@@ -54,10 +54,36 @@ class IndicatorList(Resource):
     @api.param('reported_at', 'The indicator identifier')
     @api.param('feed', 'Return as an aggregated feed')
     @api.doc('list_indicators')
-    @api.marshal_list_with(indicator)
     def get(self):
         """List all indicators"""
-        return _success()
+        filters = {}
+        for f in VALID_FILTERS:
+            if request.args.get(f):
+                filters[f] = request.args.get(f)
+
+        if request.args.get('q'):
+            filters['indicator'] = request.args.get('q')
+
+        logger.debug(filters)
+
+        try:
+            r = Client(ROUTER_ADDR, session['token']).indicators_search(filters)
+
+        except RuntimeError as e:
+            logger.error(e)
+            return api.abort(422)
+
+        except InvalidSearch as e:
+            return api.abort(400)
+
+        except AuthError:
+            return api.abort(401)
+
+        except Exception as e:
+            logger.error(e)
+            return api.abort(503)
+
+        return r, 200
 
     @api.doc('create_indicator(s)')
     @api.param('nowait', 'Submit but do not wait for a response')
