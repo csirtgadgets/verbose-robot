@@ -9,6 +9,8 @@ except:
 
 
 def process(i):
+    return
+
     if i.itype != 'fqdn':
         return
 

@@ -10,7 +10,7 @@ import os
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
-def process(i, router):
+def process(i):
     if not ENABLED:
         return
 

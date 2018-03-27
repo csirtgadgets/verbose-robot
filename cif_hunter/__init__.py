@@ -9,8 +9,9 @@ from argparse import RawDescriptionHelpFormatter
 import multiprocessing
 import os, traceback
 
-from cifsdk_zmq import Client
-from cif.constants import HUNTER_ADDR, ROUTER_ADDR, HUNTER_SINK_ADDR
+from cifsdk_zmq import ZMQ as Client
+from cif.constants import HUNTER_ADDR, HUNTER_SINK_ADDR
+import csirtg_indicator
 from csirtg_indicator import Indicator
 from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser, load_plugins
 import cif_hunter
@@ -54,14 +55,15 @@ class Hunter(multiprocessing.Process):
         self.exit.set()
 
     def start(self):
-        router = Client(remote=ROUTER_ADDR, token=self.token, nowait=True)
         plugins = load_plugins(cif_hunter.__path__)
-        socket = zmq.Context().socket(zmq.PULL)
 
+        socket = zmq.Context().socket(zmq.PULL)
         socket.SNDTIMEO = SNDTIMEO
         socket.set_hwm(ZMQ_HWM)
 
         socket.connect(HUNTER_ADDR)
+
+        router = Client(remote=HUNTER_SINK_ADDR, token=self.token, nowait=True)
 
         poller = zmq.Poller()
         poller.register(socket, zmq.POLLIN)
@@ -69,21 +71,22 @@ class Hunter(multiprocessing.Process):
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except SystemExit or KeyboardInterrupt:
+            except KeyboardInterrupt or SystemExit:
                 break
 
             if socket not in s:
                 continue
 
             data = socket.recv_multipart()
+            data = json.loads(data[0])
 
             logger.debug(data)
-            data = json.loads(data[0])
 
             if isinstance(data, dict):
                 if not data.get('indicator'):
                     continue
 
+                # searches
                 if not data.get('itype'):
                     data = Indicator(
                         indicator=data['indicator'],
@@ -96,27 +99,32 @@ class Hunter(multiprocessing.Process):
                 if not data.get('tags'):
                     data['tags'] = []
 
-                data = [data]
+            d = Indicator(**data)
 
-            for d in data:
-                d = Indicator(**d)
+            if d.indicator in ["", 'localhost', 'example.com']:
+                continue
 
-                if d.indicator in ["", 'localhost', 'example.com']:
-                    continue
+            if self.exclude.get(d.provider):
+                for t in d.tags:
+                    if t in self.exclude[d.provider]:
+                        logger.debug('skipping: {}'.format(d.indicator))
 
-                if self.exclude.get(d.provider):
-                    for t in d.tags:
-                        if t in self.exclude[d.provider]:
-                            logger.debug('skipping: {}'.format(d.indicator))
+            for p in plugins:
+                try:
+                    rv = p.process(d)
+                    if not rv:
+                        continue
 
-                for p in plugins:
-                    try:
-                        rv = p.process(d)
-                        if rv and len(rv) > 0:
-                            router.indicators_create(rv)
-                    except Exception as e:
-                        logger.error(e)
-                        logger.error('[{}] giving up on: {}'.format(p, d))
+                    if not isinstance(rv, list):
+                        rv = [rv]
+
+                    rv = [i.__dict__() for i in rv]
+                    router.indicators_create(rv)
+
+                except Exception as e:
+                    logger.error(e)
+                    logger.error('[{}] giving up on: {}'.format(p, d))
+
 
 
 def main():

@@ -13,6 +13,7 @@ logger = logging.getLogger('cif_hunter')
 
 
 def process(i):
+    logger.debug(i)
     if i.itype != 'url':
         return
 

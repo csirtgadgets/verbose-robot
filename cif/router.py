@@ -78,7 +78,7 @@ class Router(object):
         self._init_gatherers(gatherer_threads)
 
         self.hunters = False
-        if hunter_threads:
+        if hunter_threads and int(hunter_threads) > 0:
             self._init_hunters(hunter_threads, hunter_token)
 
         if ROUTER_STREAM_ENABLED:
@@ -106,7 +106,6 @@ class Router(object):
         self.hunter_sink_s = self.context.socket(zmq.ROUTER)
         self.hunter_sink_s.bind(HUNTER_SINK_ADDR)
 
-        self.hunters_s = None
         self.hunters_s = self.context.socket(zmq.PUSH)
         self.hunters_s.bind(HUNTER_ADDR)
 
@@ -227,8 +226,6 @@ class Router(object):
         id, token, mtype, data = Msg().recv(s)
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
-
-        pprint(self.hunters)
 
         if self.hunters is False and not ROUTER_STREAM_ENABLED:
             return

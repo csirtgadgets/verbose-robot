@@ -99,12 +99,11 @@ class Store(multiprocessing.Process):
         if len(self.create_queue) == 0:
             return time.time()
 
-        if (time.time() - last_flushed) <= self.create_queue_flush:
-            return time.time()
+        if ((time.time() - last_flushed) <= self.create_queue_flush) \
+                and (self.create_queue_count < self.create_queue_max):
+            return last_flushed
 
-        if self.create_queue_count < self.create_queue_max:
-            return time.time()
-
+        logger.debug('flushing queue')
         self._flush_create_queue()
 
         for t in list(self.create_queue):
@@ -303,7 +302,7 @@ class Store(multiprocessing.Process):
             except Exception as e:
                 pass
 
-    def _queue_indicator(self, token, data, client_id):
+    def _queue_indicator(self, id, token, data, client_id):
         if not self.create_queue.get(token):
             self.create_queue[token] = {'count': 0, "messages": []}
 
@@ -326,7 +325,7 @@ class Store(multiprocessing.Process):
             self._cleanup_indicator(data)
 
             logger.debug('queuing indicator...')
-            return self._queue_indicator(token, data, client_id)
+            return self._queue_indicator(id, token, data, client_id)
 
         # more than one, send it..
         if isinstance(data, dict):

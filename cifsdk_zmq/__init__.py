@@ -37,7 +37,7 @@ class ZMQ(Client):
     def __init__(self, remote, token, **kwargs):
         super(ZMQ, self).__init__(remote, token)
 
-        self.context = zmq.Context.instance()
+        self.context = zmq.Context().instance()
         self.socket = self.context.socket(zmq.REQ)
         self.socket.RCVTIMEO = RCVTIMEO
         self.socket.SNDTIMEO = SNDTIMEO

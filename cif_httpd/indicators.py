@@ -1,5 +1,8 @@
 import logging
 import arrow
+import re
+import traceback
+import copy
 
 from flask_restplus import Namespace, Resource, fields
 from flask import request, session
@@ -9,7 +12,6 @@ from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
 from cifsdk_zmq import ZMQ as Client
 from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
 from pprint import pprint
-import re
 
 
 # TODO- into csirtg_indicator
@@ -89,9 +91,26 @@ envelope = api.model('Envelope', {
     'message': fields.String,
 })
 
-
 @api.route('/')
 class IndicatorList(Resource):
+
+    def _pull(self, filters):
+        try:
+            r = Client(ROUTER_ADDR, session['token']).indicators_search(filters)
+
+        except InvalidSearch as e:
+            return api.abort(400)
+
+        except AuthError as e:
+            return api.abort(401)
+
+        except Exception as e:
+            logger.error(e)
+            if logger.getEffectiveLevel() == logger.DEBUG:
+                traceback.print_exc()
+            return api.abort(500)
+
+        return r
 
     def _pull_feed(self, filters, agg=True):
         if not filters.get('reported_at') and not filters.get('days') and not filters.get('hours'):
@@ -129,33 +148,12 @@ class IndicatorList(Resource):
         if not filters.get('limit'):
             filters['limit'] = FEEDS_LIMIT
 
-        try:
-            r = Client(ROUTER_ADDR, session['token']).indicators_search(filters)
-
-        except RuntimeError as e:
-            logger.error(e)
-            return api.abort(422)
-
-        except InvalidSearch as e:
-            logger.error(e)
-            logger.debug(filters)
-            return api.abort(400)
-
-        except AuthError as e:
-            logger.error(e)
-            return api.abort(401)
-
-        except Exception as e:
-            logger.error(e)
-            return api.abort(503)
-
         if agg:
-            return aggregate(r)
+            return aggregate(self._pull(filters))
 
-        return r
+        return self._pull(filters)
 
     def _pull_whitelist(self, filters):
-        import copy
         wl_filters = copy.deepcopy(filters)
 
         # whitelists are typically updated 1/month so we should catch those
@@ -166,18 +164,21 @@ class IndicatorList(Resource):
         wl_filters['nolog'] = '1'
         wl_filters['limit'] = FEEDS_WHITELIST_LIMIT
 
-        logger.debug('gathering whitelist..')
-        try:
-            wl = Client(ROUTER_ADDR, session['token']).indicators_search(wl_filters)
-        except Exception as e:
-            logger.error(e)
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                import traceback
-                traceback.print_exc()
+        return aggregate(self._pull(wl_filters))
 
-            return api.abort(503)
+    def _filters_cleanup(self):
+        filters = {}
+        for f in VALID_FILTERS:
+            if request.args.get(f):
+                filters[f] = request.args.get(f)
 
-        return aggregate(wl)
+        if request.args.get('q'):
+            filters['indicator'] = request.args.get('q')
+
+        if not filters.get('confidence'):
+            filters['confidence'] = CONFIDENCE_DEFAULT
+
+        return filters
 
     @api.param('q', 'An indicator to search for')
     @api.param('itype', 'The indicator identifier')
@@ -191,31 +192,19 @@ class IndicatorList(Resource):
     @api.doc('list_indicators')
     def get(self):
         """List all indicators"""
-        filters = {}
-        for f in VALID_FILTERS:
-            if request.args.get(f):
-                filters[f] = request.args.get(f)
-
-        if request.args.get('q'):
-            filters['indicator'] = request.args.get('q')
+        filters = self._filters_cleanup()
 
         if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
             return {'message': 'q OR tags|itype params required'}, 400
 
-        if not filters.get('confidence'):
-            filters['confidence'] = CONFIDENCE_DEFAULT
-
         if request.args.get('nofeed', '0') == '1':
             return self._pull_feed(filters, agg=False), 200
 
-        feed = self._pull_feed(filters)
-
-        logger.debug(feed)
-
-        whitelist = self._pull_whitelist(filters)
-
         f = feed_factory(filters['itype'])
-        feed = f().process(feed, whitelist)
+        feed = f().process(
+            self._pull_feed(filters),
+            self._pull_whitelist(filters)
+        )
 
         return feed, 200
 
@@ -242,10 +231,6 @@ class IndicatorList(Resource):
             logger.error(e)
             return api.abort(422)
 
-        except RuntimeError as e:
-            logger.error(e)
-            return api.abort(422)
-
         except TimeoutError as e:
             return api.abort(408)
 
@@ -256,25 +241,9 @@ class IndicatorList(Resource):
             logger.error(e)
             import traceback
             traceback.print_exc()
-            return api.abort(422)
+            return api.abort(400)
 
         except AuthError:
             return api.abort(401)
 
         return {'data': r, 'message': 'success'}, 201
-
-
-# @api.route('/<id>')
-# @api.param('id', 'The indicator identifier')
-# @api.response(404, 'Indicator not found')
-# class Indicator(Resource):
-#     @api.doc('get_indicator')
-#     @api.marshal_with(indicator)
-#     def get(self, id):
-#         """Fetch an indicator given its identifier"""
-#         return _success()
-#
-#     @api.doc('delete_indicator')
-#     def delete(self, id):
-#         """Delete an Indicator given its identifier"""
-#         return _success()
