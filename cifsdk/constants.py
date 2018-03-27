@@ -47,5 +47,5 @@ COLUMNS = COLUMNS
 MAX_FIELD_SIZE = 30
 
 VALID_FILTERS = ['indicator', 'itype', 'confidence', 'provider', 'limit', 'application', 'nolog', 'tags', 'days',
-                 'hours', 'groups', 'report_at', 'cc', 'asn', 'asn_desc', 'rdata', 'first_at', 'last_at', 'region',
-                 'probability', 'feed']
+                 'hours', 'groups', 'reported_at', 'cc', 'asn', 'asn_desc', 'rdata', 'first_at', 'last_at', 'region',
+                 'probability', 'feed', 'days', 'hours', 'today', 'latitude', 'longitude']

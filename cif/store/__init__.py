@@ -57,7 +57,7 @@ GROUPS = ['everyone']
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
 
-if TRACE in [1, '1']:
+if TRACE == '1':
     logger.setLevel(logging.DEBUG)
 
 
@@ -279,34 +279,6 @@ class Store(multiprocessing.Process):
         if not err:
             self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
 
-    def _log_search(self, t, data):
-        if not data.get('indicator'):
-            return
-
-        if data.get('nolog') in ['1', 'True', 1, True]:
-            return
-
-        if '*' in data.get('indicator'):
-            return
-
-        if '%' in data.get('indicator'):
-            return
-
-        ts = arrow.utcnow().format('YYYY-MM-DDTHH:mm:ss.SSZ')
-        s = Indicator(
-            indicator=data['indicator'],
-            tlp='amber',
-            confidence=10,
-            tags='search',
-            provider=t['username'],
-            firsttime=ts,
-            lasttime=ts,
-            reporttime=ts,
-            group=t['groups'][0],
-            count=1,
-        )
-        self.store.indicators.upsert(t, [s.__dict__()])
-
     def _check_indicator(self, i, t):
         for e in REQUIRED_ATTRIBUTES:
             if not i.get(e):
@@ -378,18 +350,6 @@ class Store(multiprocessing.Process):
             except:
                 pass
 
-        if data.get('days'):
-            now = arrow.utcnow()
-            data['reporttimeend'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-            now = now.replace(days=-int(data['days']))
-            data['reporttime'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-
-        if data.get('hours'):
-            now = arrow.utcnow()
-            data['reporttimeend'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-            now = now.replace(hours=-int(data['hours']))
-            data['reporttime'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-
         self._log_search(t, data)
 
         try:
@@ -398,7 +358,8 @@ class Store(multiprocessing.Process):
             logger.error(e)
 
             if logger.getEffectiveLevel() == logging.DEBUG:
-                logger.error(traceback.print_exc())
+                import traceback
+                traceback.print_exc()
 
             raise InvalidSearch('invalid search')
 

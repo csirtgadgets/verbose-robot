@@ -347,7 +347,7 @@ class IndicatorManager(IndicatorManagerPlugin):
                 if ',' in v:
                     start, end = v.split(',')
                     s = s.filter(Indicator.reported_at >= arrow.get(start).datetime)
-                    s = s.filter(Indicator.reported_at <= arrow.get(end).datettime)
+                    s = s.filter(Indicator.reported_at <= arrow.get(end).datetime)
                 else:
                     s = s.filter(Indicator.reported_at >= arrow.get(v).datetime)
 
@@ -449,7 +449,6 @@ class IndicatorManager(IndicatorManagerPlugin):
         s = self._search(filters, token)
 
         limit = filters.pop('limit', limit)
-        filters.pop('feed')
 
         rv = s.order_by(desc(Indicator.reported_at)).limit(limit)
 

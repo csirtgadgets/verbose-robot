@@ -37,7 +37,7 @@ def main():
     p.add_argument('--itype', help='filter by indicator type')  ## need to fix sqlite for non-ascii stuff first
     p.add_argument("--submit", action="store_true", help="submit an indicator")
     p.add_argument('--limit', help='limit results [default %(default)s]', default=SEARCH_LIMIT)
-    p.add_argument('--report_at', help='specify reporttime filter')
+    p.add_argument('--reported_at', help='specify reported_at filter')
     p.add_argument('-n', '--nolog', help='do not log search', action='store_true')
     p.add_argument('-f', '--format', help='specify output format [default: %(default)s]"', default=FORMAT, choices=FORMATS.keys())
 
@@ -48,14 +48,8 @@ def main():
 
     p.add_argument("--zmq", help="use zmq as a transport instead of http", action="store_true")
 
-    p.add_argument('--feed', action='store_true')
-
     p.add_argument('--no-verify-ssl', action='store_true')
 
-    p.add_argument('--last-day', action="store_true", help='auto-sets reporttime to 23 hours and 59 seconds ago '
-                                                           '(current time UTC) and reporttime-end to "now"')
-    p.add_argument('--last-hour', action='store_true', help='auto-sets reporttime to the beginning of the previous full'
-                                                            ' hour and reporttime-end to end of previous full hour')
     p.add_argument('--days', help='filter results within last X days')
     p.add_argument('--today', help='auto-sets reporttime to today, 00:00:00Z (UTC)', action='store_true')
     p.add_argument('--columns', help='specify output columns [default %(default)s]', default=','.join(COLUMNS))
@@ -138,29 +132,12 @@ def main():
         'cc': options.get('cc'),
         'region': options.get('region'),
         'rdata': options.get('rdata'),
-        'reporttime': options.get('reporttime'),
-        'groups': options.get('groups')
+        'reported_at': options.get('reporttime'),
+        'groups': options.get('groups'),
+        'hours': options.get('hours'),
+        'days': options.get('days'),
+        'today': options.get('today')
     }
-
-    if args.last_day:
-        filters['days'] = '1'
-        del filters['reporttime']
-
-    if args.last_hour:
-        filters['hours'] = '1'
-        del filters['reporttime']
-
-    if args.days:
-        filters['days'] = args.days
-        del filters['reporttime']
-
-    if args.today:
-        now = arrow.utcnow()
-        filters['reporttime'] = '{0}Z'.format(now.format('YYYY-MM-DDT00:00:00'))
-
-    if filters.get('itype') and not filters.get('search') and not args.no_feed:
-        logger.info('setting feed flag by default, use --no-feed to override')
-        options['feed'] = True
 
     if options.get("delete"):
         if args.id:
@@ -171,40 +148,6 @@ def main():
         rv = cli.indicators_delete(filters)
 
         print('deleted: {}'.format(rv))
-        raise SystemExit
-
-    if options.get('feed'):
-        if not filters.get('itype') and not ADVANCED:
-            print('\nmissing --itype\n\n')
-            raise SystemExit
-
-        if not filters.get('tags') and not ADVANCED:
-            print('\nmissing --tags [phishing|malware|botnet|scanner|pdns|whitelist|...]\n\n')
-            raise SystemExit
-
-        if not filters.get('confidence'):
-            filters['confidence'] = 8
-
-        if args.limit == SEARCH_LIMIT:
-            filters['limit'] = FEED_LIMIT
-
-        filters['feed'] = '1'
-
-        try:
-            rv = cli.indicators_search(filters=filters)
-
-        except AuthError as e:
-            logger.error('unauthorized')
-
-        except KeyboardInterrupt:
-            pass
-
-        except Exception as e:
-            logger.error(e)
-
-        else:
-            print(FORMATS[options.get('format')](data=rv))
-
         raise SystemExit
 
     try:
