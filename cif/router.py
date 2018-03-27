@@ -99,7 +99,7 @@ class Router(object):
         self.streamer.start()
 
     def _init_hunters(self, threads, token):
-        if threads == 0:
+        if int(threads) == 0:
             return
 
         logger.info('launching hunters...')
@@ -228,10 +228,11 @@ class Router(object):
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
 
+        pprint(self.hunters)
+
         if self.hunters is False and not ROUTER_STREAM_ENABLED:
             return
 
-        logger.debug('wati what?"')
         data = json.loads(data)
         if isinstance(data, dict):
             data = [data]

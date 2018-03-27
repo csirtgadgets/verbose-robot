@@ -8,6 +8,8 @@ from cifsdk_zmq import ZMQ as Client
 from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
 from pprint import pprint
 
+CONFIDENCE_DEFAULT = 7
+
 logger = logging.getLogger('cif-httpd')
 
 itypes = ['ipv4', 'ipv6', 'url', 'fqdn', 'sha1', 'sha256', 'sha512', 'email']
@@ -47,25 +49,8 @@ def _failure(msg='unknown', data=[]):
 
 @api.route('/')
 class IndicatorList(Resource):
-    @api.param('q', 'An indicator to search for')
-    @api.param('itype', 'The indicator identifier')
-    @api.param('tags', 'The indicator identifier')
-    @api.param('confidence', 'The indicator identifier')
-    @api.param('reported_at', 'The indicator identifier')
-    @api.param('feed', 'Return as an aggregated feed')
-    @api.doc('list_indicators')
-    def get(self):
-        """List all indicators"""
-        filters = {}
-        for f in VALID_FILTERS:
-            if request.args.get(f):
-                filters[f] = request.args.get(f)
 
-        if request.args.get('q'):
-            filters['indicator'] = request.args.get('q')
-
-        logger.debug(filters)
-
+    def _pull_feed(self, filters):
         try:
             r = Client(ROUTER_ADDR, session['token']).indicators_search(filters)
 
@@ -82,6 +67,45 @@ class IndicatorList(Resource):
         except Exception as e:
             logger.error(e)
             return api.abort(503)
+
+        return r
+
+
+    def _pull_whitelist(self):
+
+
+    @api.param('q', 'An indicator to search for')
+    @api.param('itype', 'The indicator identifier')
+    @api.param('tags', 'The indicator identifier')
+    @api.param('confidence', 'The indicator identifier')
+    @api.param('reported_at', 'The indicator identifier')
+    @api.param('probability')
+    @api.param('nofeed', 'Return as an aggregated feed')
+    @api.doc('list_indicators')
+    def get(self):
+        """List all indicators"""
+        filters = {}
+        for f in VALID_FILTERS:
+            if request.args.get(f):
+                filters[f] = request.args.get(f)
+
+        if request.args.get('q'):
+            filters['indicator'] = request.args.get('q')
+
+        if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
+            return {'message': 'indicator OR (tags AND itype) params required'}, 403
+
+        if not filters.get('confidence'):
+            filters['confidence'] = CONFIDENCE_DEFAULT
+
+        logger.debug(filters)
+
+        r = self._pull_feed(filters)
+
+        if not request.args.get('nofeed', '0') == '0':
+            return r, 200
+
+        wl = self._pull_feed(filters)
 
         return r, 200
 
