@@ -9,7 +9,7 @@ from csirtg_dnsdb.exceptions import QuotaLimit
 import os
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
-TOKEN = os.environ.get('FARSIGHT_TOKEN')
+TOKEN = os.getenv('FARSIGHT_TOKEN', None)
 PROVIDER = os.environ.get('FARSIGHT_PROVIDER', 'dnsdb.info')
 MAX_QUERY_RESULTS = os.environ.get('FARSIGHT_QUERY_MAX', 10000)
 CLIENT = Client()
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def process(i):
+    return
+
     if not ENABLED and not TOKEN:
         return
 

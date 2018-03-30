@@ -6,6 +6,7 @@ import ipaddress
 import re
 import logging
 import time
+from pprint import pprint
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
@@ -475,7 +476,7 @@ class IndicatorManager(IndicatorManagerPlugin):
         return rv
 
     def _upsert_itype(self, s, i):
-        if i.itype is 'ipv4':
+        if i.itype == 'ipv4':
             match = re.search('^(\S+)\/(\d+)$', i.indicator)  # TODO -- use ipaddress
             if match:
                 ipv4 = Ipv4(ipv4=match.group(1), mask=match.group(2), indicator=i)
@@ -484,7 +485,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             s.add(ipv4)
 
-        elif i.itype is 'ipv6':
+        elif i.itype == 'ipv6':
             match = re.search('^(\S+)\/(\d+)$', i.itype)  # TODO -- use ipaddress
             if match:
                 ip = Ipv6(ip=match.group(1), mask=match.group(2), indicator=i)
@@ -493,15 +494,15 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             s.add(ip)
 
-        elif i.itype is 'fqdn':
+        elif i.itype == 'fqdn':
             fqdn = Fqdn(fqdn=i.indicator, indicator=i)
             s.add(fqdn)
 
-        elif i.itype is 'url':
+        elif i.itype == 'url':
             url = Url(url=i.indicator, indicator=i)
             s.add(url)
 
-        elif i.itype in HASH_TYPES:
+        elif i.itype == HASH_TYPES:
             h = Hash(hash=i.indicator, indicator=i)
             s.add(h)
 
@@ -562,14 +563,18 @@ class IndicatorManager(IndicatorManagerPlugin):
                 i = i.join(Tag).filter(Tag.tag == tags[0])
 
             r = i.first()
+            if r and not isinstance(r, Indicator):
+                r = r.get(i.indicator_id)
 
             # if the record exists..
-            if r and d.get('last_at') and arrow.get(d['last_at']).datetime <= arrow.get(r.last_at).datetime:
+            if r and d.get('last_at') and arrow.get(d.get('last_at')).datetime <= arrow.get(r.last_at).datetime:
                 logger.debug('skipping: %s' % d['indicator'])
                 continue
 
             if r:
                 r.count += 1
+                if not d.get('last_at'):
+                    d['last_at'] = arrow.utcnow()
                 r.last_at = arrow.get(d['last_at']).datetime.replace(tzinfo=None)
 
                 r.reported_at = d.get('reported_at', arrow.utcnow().datetime)

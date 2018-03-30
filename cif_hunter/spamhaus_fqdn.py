@@ -96,4 +96,5 @@ def process(i):
     f.reference_tlp = 'white'
     f.reference = 'http://www.spamhaus.org/query/dbl?domain={}'.format(f.indicator)
     f.lasttime = arrow.utcnow()
+    f.probability = 0
     return f

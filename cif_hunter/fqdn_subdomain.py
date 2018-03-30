@@ -14,6 +14,8 @@ def process(i):
         return
 
     fqdn = Indicator(**i.__dict__())
+    fqdn.probability = 0
+    fqdn.probability = 0
     fqdn.indicator = i.is_subdomain()
     fqdn.lasttime = arrow.utcnow()
 
@@ -22,5 +24,5 @@ def process(i):
     except InvalidIndicator as e:
         return
 
-    fqdn.confidence = (fqdn.confidence - 3) if fqdn.confidence >= 3 else 0
+    fqdn.confidence = int(fqdn.confidence / 2) if fqdn.confidence >= 2 else 0
     return fqdn

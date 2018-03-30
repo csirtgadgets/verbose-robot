@@ -124,7 +124,9 @@ class Hunter(multiprocessing.Process):
                 except Exception as e:
                     logger.error(e)
                     logger.error('[{}] giving up on: {}'.format(p, d))
-
+                    if logger.getEffectiveLevel() == logging.DEBUG:
+                        import traceback
+                        traceback.print_exc()
 
 
 def main():

@@ -32,7 +32,9 @@ def process(i):
     fqdn.lasttime = arrow.utcnow()
     fqdn.indicator = u.hostname
     fqdn.itype = 'fqdn'
-    fqdn.confidence = (int(fqdn.confidence) / 2)
+    fqdn.confidence = int((fqdn.confidence / 2)) if fqdn.confidence >= 2 else 0
     fqdn.rdata = i.indicator
+
+    fqdn.probability = 0
 
     return fqdn

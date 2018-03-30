@@ -23,6 +23,8 @@ def process(i):
 
     try:
         r = resolve_ns(i.indicator)
+        if not r:
+            return
     except Timeout:
         return
 
@@ -33,6 +35,7 @@ def process(i):
             continue
 
         ip = Indicator(**i.__dict__())
+        ip.probability = 0
         ip.indicator = str(rr)
         ip.lasttime = arrow.utcnow()
 
@@ -43,7 +46,7 @@ def process(i):
 
         ip.itype = 'ipv4'
         ip.rdata = i.indicator
-        ip.confidence = (ip.confidence - 4) if ip.confidence >= 4 else 0
+        ip.confidence = int((ip.confidence / 2)) if ip.confidence >= 2 else 0
         rv.append(ip)
 
     return rv

@@ -12,6 +12,7 @@ from csirtg_indicator.format import FORMATS
 from cifsdk.utils import setup_logging, get_argument_parser
 from csirtg_indicator import Indicator
 from cifsdk.client.http import HTTP as Client
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ def main():
         'hours': options.get('hours'),
         'days': options.get('days'),
         'today': options.get('today'),
-        'nofeed': options.get('nofeed'),
+        'no_feed': options.get('no_feed'),
         'probability': options.get('probability')
     }
 
