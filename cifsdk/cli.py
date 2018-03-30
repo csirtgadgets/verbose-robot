@@ -111,6 +111,7 @@ def main():
     p.add_argument('-f', '--format', help='specify output format [default: %(default)s]"', default=FORMAT, choices=FORMATS.keys())
     p.add_argument('--indicator')
     p.add_argument('--confidence', help="specify confidence level")
+    p.add_argument('--probability')
     p.add_argument('--tags', nargs='+')
     p.add_argument('--provider')
     p.add_argument('--asn')
@@ -171,7 +172,8 @@ def main():
         'hours': options.get('hours'),
         'days': options.get('days'),
         'today': options.get('today'),
-        'nofeed': options.get('nofeed')
+        'nofeed': options.get('nofeed'),
+        'probability': options.get('probability')
     }
 
     for k, v in filters.items():

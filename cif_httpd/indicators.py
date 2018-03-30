@@ -184,6 +184,7 @@ class IndicatorList(Resource):
     @api.param('itype', 'The indicator identifier')
     @api.param('tags', 'The indicator identifier')
     @api.param('confidence', 'The indicator identifier')
+    @api.param('probability')
     @api.param('reported_at', 'The indicator identifier')
     @api.param('today')
     @api.param('hours')

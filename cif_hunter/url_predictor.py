@@ -1,16 +1,31 @@
 import arrow
 
 from csirtg_indicator import Indicator
+ENABLED = False
+
 try:
     from csirtg_urlsml import predict
+    from csirtg_urlsml.constants import VERSION
+    ENABLED = True
 except:
     pass
 
+print(ENABLED)
+
 
 def process(i):
-    return
+    if not ENABLED:
+        return
+
     if i.itype != 'url':
         return
+
+    if i.probability:
+        return
+
+    for t in i.tags:
+        if t == 'predicted':
+            return
 
     if not predict(i.indicator):
         return
@@ -18,9 +33,12 @@ def process(i):
     i = Indicator(**i.__dict__())
     i.lasttime = arrow.utcnow()
     i.confidence = 9
-    i.probability = 9
+    i.probability = 84
     i.provider = 'csirtgadgets.com'
-    i.tags.append('predicted')
-    i.reference = 'https://github.com/csirtgadgets/csirtg-urlsml-py'
+    i.reference = 'https://github.com/csirtgadgets/csirtg-urlsml-py' + '#' + VERSION
+
+    tags = set(i.tags)
+    tags.add('predicted')
+    i.tags = list(tags)
 
     return i
