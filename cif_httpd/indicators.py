@@ -198,7 +198,7 @@ class IndicatorList(Resource):
         if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
             return {'message': 'q OR tags|itype params required'}, 400
 
-        if request.args.get('nofeed', '0') == '1':
+        if filters.get('indicator') or request.args.get('nofeed', '0') == '1':
             return self._pull_feed(filters, agg=False), 200
 
         f = feed_factory(filters['itype'])
