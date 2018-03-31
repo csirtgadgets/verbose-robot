@@ -24,6 +24,7 @@ from .indicators import api as indicators_api
 from .ping import api as ping_api
 from .tokens import api as tokens_api
 from .health import api as health_api
+from .graph import api as graph_api
 
 STREAM_ADDR = os.getenv('CIF_STREAM_ADDR', 'tcp://127.0.0.1:5001')
 
@@ -56,7 +57,8 @@ APIS = [
     indicators_api,
     tokens_api,
     health_api,
-    firehose_api
+    firehose_api,
+    graph_api
 ]
 
 for A in APIS:

@@ -114,7 +114,6 @@ class Store(multiprocessing.Process):
                     logger.debug('pruning {} from create_queue'.format(t))
                     del self.create_queue[t]
 
-        pprint(self.create_queue)
         self.create_queue_count = 0
 
         return time.time()
@@ -353,6 +352,21 @@ class Store(multiprocessing.Process):
 
         try:
             x = self.store.indicators.search(t, data)
+        except Exception as e:
+            logger.error(e)
+
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                import traceback
+                traceback.print_exc()
+
+            raise InvalidSearch('invalid search')
+
+        return x
+
+    def handle_graph_search(self, token, data, **kwargs):
+        t = self.store.tokens.read(token)
+        try:
+            x = self.store.indicators.search_graph(t, data)
         except Exception as e:
             logger.error(e)
 

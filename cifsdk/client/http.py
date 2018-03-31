@@ -261,6 +261,9 @@ class HTTP(Client):
         logger.debug('return time: %.15f' % rv)
         return rv
 
+    def graph_search(self, filters):
+        return self._get('graph', params=filters)
+
     def indicators_search(self, filters):
         data = self._get('indicators', params=filters)
 

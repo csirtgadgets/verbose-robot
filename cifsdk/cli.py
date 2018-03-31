@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 def _search(cli, args, options, filters):
-
     try:
         rv = cli.search(filters)
 
@@ -35,6 +34,27 @@ def _search(cli, args, options, filters):
 
     else:
         print(FORMATS[options.get('format')](data=rv, cols=args.columns.split(',')))
+
+    raise SystemExit
+
+
+def _graph(cli, args, options, filters):
+    try:
+        rv = cli.graph_search(filters)
+
+    except AuthError as e:
+        logger.error('unauthorized')
+
+    except KeyboardInterrupt:
+        pass
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(e)
+
+    else:
+        pprint(rv['data'])
 
     raise SystemExit
 
@@ -129,6 +149,8 @@ def main():
     p.add_argument('--columns', help='specify output columns [default %(default)s]', default=','.join(COLUMNS))
     p.add_argument('--no-feed', action='store_true')
 
+    p.add_argument('--graph', help='dump the graph', action='store_true')
+
     args = p.parse_args()
 
     setup_logging(args)
@@ -185,6 +207,9 @@ def main():
 
     if options.get("delete"):
         _delete(cli, args, options, filters)
+
+    if args.graph:
+        _graph(cli, args, options, filters)
 
     _search(cli, args, options, filters)
 

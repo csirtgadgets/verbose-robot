@@ -12,6 +12,9 @@ from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, de
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
 from sqlalchemy.ext.declarative import declarative_base
 
+import networkx as nx
+from networkx.readwrite import json_graph
+
 from csirtg_indicator import resolve_itype
 from csirtg_indicator.exceptions import InvalidIndicator
 from cifsdk.exceptions import InvalidSearch
@@ -30,6 +33,8 @@ if PYVERSION > 2:
 REQUIRED_FIELDS = ['provider', 'indicator', 'tags', 'group', 'itype']
 HASH_TYPES = ['sha1', 'sha256', 'sha512', 'md5']
 
+GRAPH_PATH = os.getenv('CIF_STORE_GRAPH_PATH', 'cifv4.gpickle')
+GRAPH_GEXF_PATH = os.getenv('CIF_STORE_GRAPH_GEXF_PATH', 'cifv4.gexf')
 
 Base = declarative_base()
 
@@ -228,6 +233,12 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         self.handle = handle
         Base.metadata.create_all(engine)
+
+        self.graph = nx.Graph()
+
+        if os.path.exists(GRAPH_PATH):
+            self.graph = nx.read_gpickle(GRAPH_PATH)
+
 
     def to_dict(self, obj):
         d = {}
@@ -515,6 +526,48 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         return s
 
+    def _insert_graph(self, i):
+        g = self.graph
+
+        i['reported_at'] = i['reporttime']
+        del i['reporttime']
+
+        if i.get('firsttime'):
+            i['first_at'] = i['firsttime']
+            del i['reporttime']
+
+        if i.get('lasttime'):
+            i['last_at'] = i['lasttime']
+            del i['lasttime']
+
+        g.add_node(i['indicator'], itype=i['itype'])
+        for t in i.get('tags'):
+            g.add_node(t)
+            g.add_edge(i['indicator'], t)
+
+        reported_at = arrow.get(i['reported_at'])
+        reported_at = '{}'.format(reported_at.format('YYYY-MM-DD'))
+        g.add_node(reported_at)
+        g.add_edge(i['indicator'], reported_at)
+
+        for a in ['asn', 'asn_desc', 'cc', 'timezone', 'region', 'city']:
+            if not i.get(a):
+                continue
+
+            g.add_node(i[a])
+            g.add_edge(i['indicator'], i[a])
+
+        if i.get('peers'):
+            for p in i['peers']:
+                for a in ['asn', 'cc', 'prefix']:
+                    g.add_node(p[a])
+                    g.add_edge(i['indicator'], p[a])
+
+    def search_graph(self, token, data, **kwargs):
+        rv = json_graph.node_link_data(self.graph)
+
+        return rv
+
     def upsert(self, token, data, **kwargs):
         if type(data) == dict:
             data = [data]
@@ -527,6 +580,8 @@ class IndicatorManager(IndicatorManagerPlugin):
         for d in data:
 
             tags = d.get("tags", [])
+
+            self._insert_graph(d)
 
             if len(tags) > 0:
                 if isinstance(tags, basestring):
@@ -625,5 +680,7 @@ class IndicatorManager(IndicatorManagerPlugin):
         logger.debug('committing')
         start = time.time()
         s.commit()
+        nx.write_gpickle(self.graph, GRAPH_PATH)
+        nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
         logger.debug('done: %0.2f' % (time.time() - start))
         return n
