@@ -18,7 +18,7 @@ defaults:
   altid_tlp: white
   altid: https://csirtg.io/search?q={indicator}
   tlp: white
-  confidence: 9
+  confidence: 4
   values:
     - null
     - indicator

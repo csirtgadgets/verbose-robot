@@ -13,6 +13,7 @@ ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
 def process(i):
+    return
     if not ENABLED:
         return
 
@@ -54,7 +55,7 @@ def process(i):
 
         fqdn.itype = 'fqdn'
         fqdn.rdata = i.indicator
-        fqdn.confidence = int(fqdn.confidence / 2) if fqdn.confidence >= 2 else 0
+        fqdn.confidence = 0
         rv.append(fqdn)
 
     return rv

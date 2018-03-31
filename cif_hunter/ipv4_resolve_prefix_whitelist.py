@@ -20,5 +20,5 @@ def process(i):
 
     ii.indicator = prefix
     ii.tags = ['whitelist']
-    ii.confidence = int(ii.confidence / 2) if ii.confidence >= 2 else 0
+    ii.confidence = 2
     return ii

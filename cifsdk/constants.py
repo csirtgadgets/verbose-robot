@@ -41,7 +41,11 @@ FORMAT = os.getenv('CIF_FORMAT', 'table')
 
 ADVANCED = os.getenv('CIF_ADVANCED')
 
-COLUMNS = COLUMNS
+COLUMNS = os.getenv('CIFSDK_COLUMNS', COLUMNS)
+if not isinstance(COLUMNS, list):
+    COLUMNS = COLUMNS.split(',')
+
+
 MAX_FIELD_SIZE = 30
 
 VALID_FILTERS = ['indicator', 'itype', 'confidence', 'provider', 'limit', 'application', 'nolog', 'tags', 'days',

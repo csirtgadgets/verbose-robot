@@ -22,16 +22,12 @@ def process(i):
     if i.probability:
         return
 
-    for t in i.tags:
-        if t == 'predicted':
-            return
-
     if not predict(i.indicator):
         return
 
     fqdn = Indicator(**i.__dict__())
     fqdn.lasttime = arrow.utcnow()
-    fqdn.confidence = 9
+    fqdn.confidence = 4
     fqdn.probability = 84
     fqdn.provider = 'csirtgadgets.com'
     fqdn.reference = 'https://github.com/csirtgadgets/csirtg-domainsml-py' + '#' + VERSION

@@ -12,6 +12,7 @@ ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
 def process(i):
+    return
     if not ENABLED:
         return
 
@@ -46,7 +47,7 @@ def process(i):
 
         ip.itype = 'ipv4'
         ip.rdata = i.indicator
-        ip.confidence = int((ip.confidence / 2)) if ip.confidence >= 2 else 0
+        ip.confidence = 0
         rv.append(ip)
 
     return rv

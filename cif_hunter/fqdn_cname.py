@@ -43,6 +43,7 @@ def process(i):
             return
 
         fqdn.itype = 'fqdn'
+        # keep avoid recursive cname lookups
         fqdn.confidence = int(fqdn.confidence / 2) if fqdn.confidence >= 2 else 0
         rv.append(fqdn)
 

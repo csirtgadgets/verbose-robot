@@ -55,7 +55,7 @@ FEED_DAYS = {
 }
 
 
-CONFIDENCE_DEFAULT = 7
+CONFIDENCE_DEFAULT = 3
 
 
 # http://stackoverflow.com/a/456747
@@ -205,10 +205,18 @@ class IndicatorList(Resource):
             return self._pull_feed(filters, agg=False), 200
 
         f = feed_factory(filters['itype'])
-        feed = f().process(
-            self._pull_feed(filters),
-            self._pull_whitelist(filters)
-        )
+
+        tags = set([filters.get('tags')])
+        if 'whitelist' in tags:
+            feed = f().process(
+                self._pull_feed(filters),
+                [],
+            )
+        else:
+            feed = f().process(
+                self._pull_feed(filters),
+                self._pull_whitelist(filters)
+            )
 
         return feed, 200
 

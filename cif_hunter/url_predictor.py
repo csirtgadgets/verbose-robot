@@ -30,7 +30,7 @@ def process(i):
 
     i = Indicator(**i.__dict__())
     i.lasttime = arrow.utcnow()
-    i.confidence = 9
+    i.confidence = 4
     i.probability = 84
     i.provider = 'csirtgadgets.com'
     i.reference = 'https://github.com/csirtgadgets/csirtg-urlsml-py' + '#' + VERSION

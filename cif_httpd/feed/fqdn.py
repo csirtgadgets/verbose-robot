@@ -39,12 +39,14 @@ class Fqdn(object):
             bits.pop(0)
 
     # https://github.com/jsommers/pytricia
-    def process(self, data, whitelist):
+    def process(self, data, whitelist=[]):
 
-        wl = self.wl
+        wl = []
 
-        for w in whitelist:
-            wl.add(w['indicator'])
+        if len(whitelist) > 0:
+            wl = self.wl
+            for w in whitelist:
+                wl.add(w['indicator'])
 
         rv = []
         for x in data:

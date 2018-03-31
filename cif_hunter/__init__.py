@@ -91,7 +91,7 @@ class Hunter(multiprocessing.Process):
                     data = Indicator(
                         indicator=data['indicator'],
                         tags='search',
-                        confidence=10,
+                        confidence=4,
                         group='everyone',
                         tlp='amber',
                     ).__dict__()

@@ -5,7 +5,7 @@ from cifsdk.utils.network import resolve_ns
 from pprint import pprint
 import arrow
 
-CONFIDENCE = 9
+CONFIDENCE = 4
 PROVIDER = 'spamhaus.org'
 
 CODES = {

@@ -28,7 +28,7 @@ def process(indicator):
     i = '0.{}.{}.{}'.format(i[1], i[2], i[3])
 
     answers = _resolve(i)
-    if len(answers) == 0:
+    if answers is None or len(answers) == 0:
         return
 
     if not indicator.peers:

@@ -54,7 +54,7 @@ def process(i):
                 rdata=r['rrname'].rstrip('.'),
                 count=r['count'],
                 tags='pdns',
-                confidence=10,
+                confidence=4,
                 firsttime=first,
                 lasttime=last,
                 reporttime=reporttime,

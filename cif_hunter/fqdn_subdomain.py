@@ -7,9 +7,6 @@ def process(i):
     if i.itype != 'fqdn':
         return
 
-    if 'search' in i.tags:
-        return
-
     if not i.is_subdomain():
         return
 
@@ -23,5 +20,5 @@ def process(i):
     except InvalidIndicator as e:
         return
 
-    fqdn.confidence = int(fqdn.confidence / 2) if fqdn.confidence >= 2 else 0
+    fqdn.confidence = 1
     return fqdn

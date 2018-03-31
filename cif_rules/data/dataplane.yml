@@ -7,7 +7,7 @@ defaults:
   provider: dataplane.org
   tlp: green
   altid_tlp: white
-  confidence: 9
+  confidence: 4
   values:
     - null
     - null
@@ -23,14 +23,11 @@ feeds:
     tags:
       - scanner
       - dns
-    confidence: 9
     description: 'identified as sending recursive DNS queries to a remote host'
 
   dnsrdany:
     remote: https://dataplane.org/dnsrdany.txt
-    application: dns
     portlist: 53
-    confidence: 9
     tags:
       - scanner
       - dns
@@ -38,9 +35,7 @@ feeds:
 
   dnsversion:
     remote: https://dataplane.org/dnsversion.txt
-    application: dns
     portlist: 53
-    confidence: 9
     tags:
       - scanner
       - dns
@@ -49,39 +44,49 @@ feeds:
   # not enough info to be confident they're doing bad things
   sshclient:
     remote: https://dataplane.org/sshclient.txt
-    application: ssh
     portlist: 22
-    confidence: 7
-    tags: scanner
+    confidence: 3
+    tags:
+      - ssh
+      - scanner
     description: 'has been seen initiating an SSH connection'
 
   # pinging the protocol, bad stuff..
   ssh:
     remote: https://dataplane.org/sshpwauth.txt
-    application: ssh
     portlist: 22
     tags:
+      - ssh
       - scanner
       - bruteforce
     description: 'seen attempting to remotely login using SSH password authentication'
 
   sipquery:
     remote: https://dataplane.org/sipquery.txt
-    application: sip
     protocol: udp
     portlist: 5060
+    tags:
+      - scanner
+      - bruteforce
+      - sip
     description: 'seen initiating a SIP OPTIONS query to a remote host'
 
   sipinvitation:
     remote: https://dataplane.org/sipinvitation.txt
-    application: sip
+    tags:
+      - scanner
+      - bruteforce
+      - sip
     protocol: udp
     portlist: 5060
     description: 'seen initiating a SIP INVITE operation to a remote host'
 
   sipregistration:
     remote: https://dataplane.org/sipregistration.txt
-    application: sip
+    tags:
+      - scanner
+      - bruteforce
+      - sip
     protocol: udp
     portlist: 5060
     description: 'seen initiating a SIP REGISTER operation to a remote host'

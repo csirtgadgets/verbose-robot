@@ -17,7 +17,7 @@ defaults:
                 int(obs['rank'])
             )
         ),
-    10)))
+    4)))
 
 feeds:
   top-1000:

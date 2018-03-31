@@ -10,7 +10,7 @@ from cifsdk.utils.network import resolve_ns
 import os
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
-CONFIDENCE = 9
+CONFIDENCE = 4
 PROVIDER = 'spamhaus.org'
 
 CODES = {
@@ -85,7 +85,7 @@ def process(i):
 
     confidence = CONFIDENCE
     if ' legit ' in r['description']:
-        confidence = 6
+        confidence = 1
 
     f = Indicator(**i.__dict__())
 
