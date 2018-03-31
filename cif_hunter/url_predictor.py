@@ -10,8 +10,6 @@ try:
 except:
     pass
 
-print(ENABLED)
-
 
 def process(i):
     if not ENABLED:

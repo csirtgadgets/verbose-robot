@@ -13,7 +13,6 @@ logger = logging.getLogger('cif_hunter')
 
 
 def process(i):
-    logger.debug(i)
     if i.itype != 'url':
         return
 
@@ -34,7 +33,6 @@ def process(i):
     fqdn.itype = 'fqdn'
     fqdn.confidence = int((fqdn.confidence / 2)) if fqdn.confidence >= 2 else 0
     fqdn.rdata = i.indicator
-
     fqdn.probability = 0
 
     return fqdn

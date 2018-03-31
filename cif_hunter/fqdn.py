@@ -53,6 +53,7 @@ def process(i):
         ip.itype = 'ipv4'
         ip.rdata = i.indicator
         ip.confidence = int((ip.confidence / 2)) if ip.confidence >= 2 else 0
+        ip.probability = 0
         rv.append(ip)
 
         pdns = Indicator(**copy.deepcopy(i.__dict__()))

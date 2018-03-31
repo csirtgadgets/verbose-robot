@@ -46,7 +46,7 @@ CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)  # seconds to fl
 CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)  # num of records before we start throttling a token
 
 # seconds of in-activity before we remove from the penalty box
-CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 300)
+CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 5)
 
 # queue max to flush before we hit CIF_STORE_QUEUE_FLUSH mark
 CREATE_QUEUE_MAX = os.environ.get('CIF_STORE_QUEUE_MAX', 1000)
@@ -103,18 +103,18 @@ class Store(multiprocessing.Process):
                 and (self.create_queue_count < self.create_queue_max):
             return last_flushed
 
-        logger.debug('flushing queue')
         self._flush_create_queue()
 
         for t in list(self.create_queue):
             self.create_queue[t]['messages'] = []
 
-            # if we've not seen activity in 300s reset the counter
+            # if we've not seen activity, reset the counter
             if self.create_queue[t]['count'] > 0:
                 if (time.time() - self.create_queue[t]['last_activity']) > self.create_queue_wait:
                     logger.debug('pruning {} from create_queue'.format(t))
                     del self.create_queue[t]
 
+        pprint(self.create_queue)
         self.create_queue_count = 0
 
         return time.time()

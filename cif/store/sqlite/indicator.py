@@ -368,10 +368,17 @@ class IndicatorManager(IndicatorManagerPlugin):
             elif k == 'probability':
                 if ',' in str(v):
                     start, end = str(v).split(',')
-                    s = s.filter(Indicator.probability >= float(start))
-                    s = s.filter(Indicator.probability <= float(end))
+                    if start == 0:
+                        s = s.filter(or_(Indicator.probability >= float(start), Indicator.probability == None))
+                        s = s.filter(Indicator.probability <= float(end))
+                    else:
+                        s = s.filter(Indicator.probability >= float(start))
+                        s = s.filter(Indicator.probability <= float(end))
                 else:
-                    s = s.filter(Indicator.probability >= float(v))
+                    if float(v) == 0:
+                        s = s.filter(or_(Indicator.probability == None, Indicator.probability >= float(v)))
+                    else:
+                        s = s.filter(Indicator.probability >= float(v))
 
             elif k == 'itype':
                 s = s.filter(Indicator.itype == v)

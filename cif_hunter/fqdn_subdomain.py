@@ -15,7 +15,6 @@ def process(i):
 
     fqdn = Indicator(**i.__dict__())
     fqdn.probability = 0
-    fqdn.probability = 0
     fqdn.indicator = i.is_subdomain()
     fqdn.lasttime = arrow.utcnow()
 
