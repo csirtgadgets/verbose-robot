@@ -22,5 +22,5 @@ flask-sockets
 websocket-client>=0.44,<1
 
 lxml<4.0
-#https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
+https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
 
