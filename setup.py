@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 import versioneer
 import sys
 
-if sys.version_info < (3, 6):
+if sys.version_info < (3, 5):
     print("\n")
     print("This requires python 3.6 or higher")
     print("\n")
