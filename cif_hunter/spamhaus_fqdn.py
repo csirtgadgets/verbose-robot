@@ -10,7 +10,7 @@ from cifsdk.utils.network import resolve_ns
 import os
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
-CONFIDENCE = 9
+CONFIDENCE = 4
 PROVIDER = 'spamhaus.org'
 
 CODES = {
@@ -85,7 +85,7 @@ def process(i):
 
     confidence = CONFIDENCE
     if ' legit ' in r['description']:
-        confidence = 6
+        confidence = 1
 
     f = Indicator(**i.__dict__())
 
@@ -96,4 +96,5 @@ def process(i):
     f.reference_tlp = 'white'
     f.reference = 'http://www.spamhaus.org/query/dbl?domain={}'.format(f.indicator)
     f.lasttime = arrow.utcnow()
+    f.probability = 0
     return f

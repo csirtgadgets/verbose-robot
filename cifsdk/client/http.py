@@ -58,7 +58,7 @@ class HTTP(Client):
         self.session = requests.Session()
         self.session.headers["Accept"] = 'application/vnd.cif.v4+json'
         self.session.headers['User-Agent'] = 'cifsdk-py/{}'.format(VERSION)
-        self.session.headers['Authorization'] = 'Token token=' + self.token
+        self.session.headers['Authorization'] = self.token
         self.session.headers['Accept-Encoding'] = 'deflate'
 
     def _check_status(self, resp, expect=200):
@@ -260,6 +260,9 @@ class HTTP(Client):
         rv = (time.time() - t0)
         logger.debug('return time: %.15f' % rv)
         return rv
+
+    def graph_search(self, filters):
+        return self._get('graph', params=filters)
 
     def indicators_search(self, filters):
         data = self._get('indicators', params=filters)

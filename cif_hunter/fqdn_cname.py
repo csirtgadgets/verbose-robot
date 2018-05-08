@@ -19,6 +19,8 @@ def process(i):
 
     try:
         r = resolve_ns(i.indicator, t='CNAME')
+        if not r:
+            return
     except Timeout:
         return
 
@@ -31,6 +33,7 @@ def process(i):
             continue
 
         fqdn = Indicator(**i.__dict__())
+        fqdn.probability = 0
         fqdn.indicator = rr
         fqdn.lasttime = arrow.utcnow()
 
@@ -40,7 +43,8 @@ def process(i):
             return
 
         fqdn.itype = 'fqdn'
-        fqdn.confidence = (fqdn.confidence - 1)
+        # keep avoid recursive cname lookups
+        fqdn.confidence = int(fqdn.confidence / 2) if fqdn.confidence >= 2 else 0
         rv.append(fqdn)
 
     return rv

@@ -1,0 +1,6 @@
+feeds:
+  compromised-ips:
+    remote: http://rules.emergingthreats.net/blockrules/compromised-ips.txt
+    defaults:
+      description: 'compromised ip'
+      tags: malware

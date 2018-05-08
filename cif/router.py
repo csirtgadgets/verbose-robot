@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import ujson as json
 import logging
@@ -25,7 +25,7 @@ import multiprocessing as mp
 from cifsdk_msg import Msg
 
 
-HUNTER_MIN_CONFIDENCE = 4
+HUNTER_MIN_CONFIDENCE = 1
 HUNTER_THREADS = os.getenv('CIF_HUNTER_THREADS', 0)
 HUNTER_ADVANCED = os.getenv('CIF_HUNTER_ADVANCED', 0)
 GATHERER_THREADS = os.getenv('CIF_GATHERER_THREADS', 2)

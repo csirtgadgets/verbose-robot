@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import logging
 import os
@@ -24,6 +24,7 @@ from .indicators import api as indicators_api
 from .ping import api as ping_api
 from .tokens import api as tokens_api
 from .health import api as health_api
+from .graph import api as graph_api
 
 STREAM_ADDR = os.getenv('CIF_STREAM_ADDR', 'tcp://127.0.0.1:5001')
 
@@ -38,7 +39,7 @@ Compress(app)
 sockets = Sockets(app)
 
 authorizations = {
-    'apikey': {
+    'token': {
         'type': 'apiKey',
         'in': 'header',
         'name': 'Authorization'
@@ -56,7 +57,8 @@ APIS = [
     indicators_api,
     tokens_api,
     health_api,
-    firehose_api
+    firehose_api,
+    graph_api
 ]
 
 for A in APIS:
@@ -81,11 +83,11 @@ def pull_token():
     if "Authorization" not in request.headers:
         return
 
-    t = re.match("^Token token=(\S+)$", request.headers['Authorization'])
+    t = request.headers['Authorization']
     if not t:
         return
 
-    return t.group(1)
+    return t
 
 
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent

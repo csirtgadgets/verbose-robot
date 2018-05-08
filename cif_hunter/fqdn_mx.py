@@ -13,6 +13,7 @@ ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
 def process(i):
+    return
     if not ENABLED:
         return
 
@@ -24,6 +25,8 @@ def process(i):
 
     try:
         r = resolve_ns(i.indicator, t='MX')
+        if not r:
+            return
     except Timeout:
         return
 
@@ -41,6 +44,7 @@ def process(i):
             continue
 
         fqdn = Indicator(**i.__dict__())
+        fqdn.probability = 0
         fqdn.indicator = rr.rstrip('.')
         fqdn.lasttime = arrow.utcnow()
 
@@ -51,7 +55,7 @@ def process(i):
 
         fqdn.itype = 'fqdn'
         fqdn.rdata = i.indicator
-        fqdn.confidence = (fqdn.confidence - 5) if fqdn.confidence >= 5 else 0
+        fqdn.confidence = 0
         rv.append(fqdn)
 
     return rv

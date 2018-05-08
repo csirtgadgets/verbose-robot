@@ -3,6 +3,12 @@ from setuptools import setup, find_packages
 import versioneer
 import sys
 
+if sys.version_info < (3, 6):
+    print("\n")
+    print("This requires python 3.6 or higher")
+    print("\n")
+    raise SystemExit
+
 # vagrant doesn't appreciate hard-linking
 if os.environ.get('USER') == 'vagrant' or os.path.isdir('/vagrant'):
     del os.link
@@ -33,7 +39,7 @@ setup(
     description="CIFv4",
     long_description="",
     url="https://github.com/csirtgadgets/verbose-robot",
-    license='MPLv2',
+    license='MPL2',
     classifiers=[
                "Topic :: System :: Networking",
                "Programming Language :: Python",
@@ -45,6 +51,7 @@ setup(
     install_requires=[
         'Flask',
         'ujson',
+        'csirtg_fm',
         #'cifsdk>=4.0',
     ],
     scripts=[],

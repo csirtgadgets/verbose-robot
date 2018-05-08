@@ -1,74 +1,42 @@
 import logging
 import os
 import geoip2.database
-import pygeoip
-from geoip2.errors import AddressNotFoundError
 import re
 from csirtg_indicator import Indicator
-from cif.constants import PYVERSION
-from cifsdk.utils.network import resolve_fqdn, resolve_url
 from pprint import pprint
+import sys
+from cifsdk.utils.network import resolve_fqdn, resolve_url
 
-
+# more local first, see search path loop
 DB_SEARCH_PATHS = [
-    './',
     '/usr/share/GeoIP',
-    '/usr/local/share/GeoIP'
+    '/usr/local/share/GeoIP',
+    '/usr/local/var/GeoIP',
+    './',
 ]
 
 ENABLE_FQDN = os.getenv('CIF_GATHERER_GEO_FQDN')
-DB_FILE = 'GeoLite2-City.mmdb'
-DB_PATH = os.environ.get('CIF_GEO_PATH')
+CITY_DB_PATH = 'GeoLite2-City.mmdb'
+ASN_DB_PATH = 'GeoLite2-ASN.mmdb'
 
-ASN_DB_PATH = 'GeoIPASNum.dat'
-ASN_DB_PATH2 = 'GeoLiteASNum.dat'
-CITY_DB_PATH = 'GeoLiteCity.dat'
-CITY_V6_DB_PATH = 'GeoLiteCityv6.dat'
-
-DB = None
-ASN_DB = None
-CITY_DB = None
-CITY_V6_DB = None
-
-if DB_PATH:
-    DB = geoip2.database.Reader(os.path.join(DB_PATH, DB_FILE))
-else:
-    for p in DB_SEARCH_PATHS:
-        if os.path.isfile(os.path.join(p, DB_FILE)):
-            DB = geoip2.database.Reader(os.path.join(p, DB_FILE))
-            break
-
-for p in DB_SEARCH_PATHS:
-    if os.path.isfile(os.path.join(p, ASN_DB_PATH)):
-        ASN_DB = pygeoip.GeoIP(os.path.join(p, ASN_DB_PATH), pygeoip.MMAP_CACHE)
-        break
-
-    if os.path.isfile(os.path.join(p, ASN_DB_PATH2)):
-        ASN_DB = pygeoip.GeoIP(os.path.join(p, ASN_DB_PATH2), pygeoip.MMAP_CACHE)
-        break
+logger = logging.getLogger('cif.gatherer')
 
 for p in DB_SEARCH_PATHS:
     if os.path.isfile(os.path.join(p, CITY_DB_PATH)):
-        CITY_DBY = pygeoip.GeoIP(os.path.join(p, CITY_DB_PATH), pygeoip.MMAP_CACHE)
-        break
+        CITY_DB = geoip2.database.Reader(os.path.join(p, CITY_DB_PATH))
 
-    if os.path.isfile(os.path.join(p, CITY_V6_DB_PATH)):
-        CITY_DB_PATH = pygeoip.GeoIP(os.path.join(p, CITY_V6_DB_PATH), pygeoip.MMAP_CACHE)
-
-
-def _ip_to_prefix(i):
-    i = list(i.split('.'))
-    i = '{}.{}.{}.0'.format(i[0], i[1], i[2])
-    return str(i)
+    if os.path.isfile(os.path.join(p, ASN_DB_PATH)):
+        ASN_DB = geoip2.database.Reader(os.path.join(p, ASN_DB_PATH))
 
 
 def _resolve(indicator):
-    if not DB:
+    if not CITY_DB:
         return
 
     i = indicator.indicator
+
     if indicator.itype in ['url', 'fqdn']:
-        if ENABLE_FQDN in ['0', 0, False, None]:
+        if not ENABLE_FQDN:
             return
 
         if indicator.itype == 'url':
@@ -81,13 +49,7 @@ def _resolve(indicator):
         if not indicator.rdata:
             indicator.rdata = i
 
-    if indicator.itype == 'ipv4':
-        try:
-            i = _ip_to_prefix(i)
-        except IndexError:
-            return
-
-    g = DB.city(i)
+    g = CITY_DB.city(i)
 
     if g.country.iso_code:
         indicator.cc = g.country.iso_code
@@ -107,17 +69,21 @@ def _resolve(indicator):
     if g.location.time_zone:
         indicator.timezone = g.location.time_zone
 
-    g = CITY_DB.record_by_addr(i)
+    try:
+        indicator.region = g.subdivisions[0].names['en']
+    except Exception:
+        pass
 
-    if g and g.get('region_code'):
-        indicator.region = g['region_code']
+    g = ASN_DB.asn(i)
 
-    g = ASN_DB.asn_by_addr(i)
-    if g:
-        m = re.match('^AS(\d+)\s([^.]+)', g)
-        if m:
-            indicator.asn = m.group(1)
-            indicator.asn_desc = m.group(2)
+    if not g:
+        return
+
+    if g.autonomous_system_number:
+        indicator.asn = g.autonomous_system_number
+
+    if g.autonomous_system_organization:
+        indicator.asn_desc = g.autonomous_system_organization
 
 
 def process(indicator):
@@ -140,7 +106,20 @@ def process(indicator):
         if indicator.indicator:
             _resolve(indicator)
         indicator.indicator = tmp
-    except AddressNotFoundError as e:
+    except ValueError as e:
         indicator.indicator = tmp
 
     return indicator
+
+
+def main():
+    i = sys.argv[1]
+
+    i = Indicator(i)
+    i = process(i)
+
+    pprint(i)
+
+
+if __name__ == "__main__":
+    main()

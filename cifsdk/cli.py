@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import logging
 import select
@@ -12,12 +12,12 @@ from csirtg_indicator.format import FORMATS
 from cifsdk.utils import setup_logging, get_argument_parser
 from csirtg_indicator import Indicator
 from cifsdk.client.http import HTTP as Client
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 
 
 def _search(cli, args, options, filters):
-
     try:
         rv = cli.search(filters)
 
@@ -34,6 +34,27 @@ def _search(cli, args, options, filters):
 
     else:
         print(FORMATS[options.get('format')](data=rv, cols=args.columns.split(',')))
+
+    raise SystemExit
+
+
+def _graph(cli, args, options, filters):
+    try:
+        rv = cli.graph_search(filters)
+
+    except AuthError as e:
+        logger.error('unauthorized')
+
+    except KeyboardInterrupt:
+        pass
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        logger.error(e)
+
+    else:
+        pprint(rv['data'])
 
     raise SystemExit
 
@@ -111,6 +132,7 @@ def main():
     p.add_argument('-f', '--format', help='specify output format [default: %(default)s]"', default=FORMAT, choices=FORMATS.keys())
     p.add_argument('--indicator')
     p.add_argument('--confidence', help="specify confidence level")
+    p.add_argument('--probability')
     p.add_argument('--tags', nargs='+')
     p.add_argument('--provider')
     p.add_argument('--asn')
@@ -126,6 +148,8 @@ def main():
     p.add_argument('--limit', help='limit results [default %(default)s]', default=SEARCH_LIMIT)
     p.add_argument('--columns', help='specify output columns [default %(default)s]', default=','.join(COLUMNS))
     p.add_argument('--no-feed', action='store_true')
+
+    p.add_argument('--graph', help='dump the graph', action='store_true')
 
     args = p.parse_args()
 
@@ -171,7 +195,8 @@ def main():
         'hours': options.get('hours'),
         'days': options.get('days'),
         'today': options.get('today'),
-        'nofeed': options.get('nofeed')
+        'no_feed': options.get('no_feed'),
+        'probability': options.get('probability')
     }
 
     for k, v in filters.items():
@@ -182,6 +207,9 @@ def main():
 
     if options.get("delete"):
         _delete(cli, args, options, filters)
+
+    if args.graph:
+        _graph(cli, args, options, filters)
 
     _search(cli, args, options, filters)
 

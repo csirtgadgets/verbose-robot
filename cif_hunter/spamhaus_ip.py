@@ -5,7 +5,7 @@ from cifsdk.utils.network import resolve_ns
 from pprint import pprint
 import arrow
 
-CONFIDENCE = 9
+CONFIDENCE = 4
 PROVIDER = 'spamhaus.org'
 
 CODES = {
@@ -78,4 +78,5 @@ def process(i):
     f.reference_tlp = 'white'
     f.reference = 'http://www.spamhaus.org/query/bl?ip={}'.format(f.indicator)
     f.lasttime = arrow.utcnow()
+    f.probability = 0
     return f

@@ -15,27 +15,23 @@ from pprint import pprint
 
 
 # TODO- into csirtg_indicator
-from .common import aggregate
-from .feed.fqdn import Fqdn
-from .feed.ipv4 import Ipv4
-from .feed.ipv6 import Ipv6
-from .feed.url import Url
-from .feed.email import Email
-from .feed.md5 import Md5
-from .feed.sha1 import Sha1
-from .feed.sha256 import Sha256
-from .feed.sha512 import Sha512
+from csirtg_indicator.feed import aggregate
+from csirtg_indicator.feed import process as feed
+from csirtg_indicator.feed.fqdn import process as feed_fqdn
+from csirtg_indicator.feed.ipv4 import process as feed_ipv4
+from csirtg_indicator.feed.ipv6 import process as feed_ipv6
 
 FEED_PLUGINS = {
-    'ipv4': Ipv4,
-    'ipv6': Ipv6,
-    'fqdn': Fqdn,
-    'url': Url,
-    'email': Email,
-    'md5': Md5,
-    'sha1': Sha1,
-    'sha256': Sha256,
-    'sha512': Sha512
+    'ipv4': feed_ipv4,
+    'ipv6': feed_ipv6,
+    'fqdn': feed_fqdn,
+    'url': feed,
+    'email': feed,
+    'md5': feed,
+    'sha1': feed,
+    'sha256': feed,
+    'sha512': feed,
+    'asn': feed,
 }
 
 DAYS_SHORT = 21
@@ -52,10 +48,11 @@ FEED_DAYS = {
     'md5': DAYS_MEDIUM,
     'sha1': DAYS_MEDIUM,
     'sha256': DAYS_MEDIUM,
+    'asn': DAYS_MEDIUM,
 }
 
 
-CONFIDENCE_DEFAULT = 7
+CONFIDENCE_DEFAULT = 3
 
 
 # http://stackoverflow.com/a/456747
@@ -65,7 +62,7 @@ def feed_factory(name):
 
 logger = logging.getLogger('cif-httpd')
 
-itypes = ['ipv4', 'ipv6', 'url', 'fqdn', 'sha1', 'sha256', 'sha512', 'email']
+itypes = ['ipv4', 'ipv6', 'url', 'fqdn', 'sha1', 'sha256', 'sha512', 'email', 'asn']
 api = Namespace('indicators', description='Indicator related operations')
 
 indicator = api.model('Indicator', {
@@ -79,7 +76,7 @@ indicator = api.model('Indicator', {
     'reported_at': fields.DateTime,
     'last_at': fields.DateTime(required=True),
     'first_at': fields.DateTime,
-    'probability': fields.Float,
+    'probability': fields.Float(min=0, max=100),
     'portlist': fields.String,
     'protocol': fields.String,
     'expire_at': fields.DateTime,
@@ -90,6 +87,7 @@ envelope = api.model('Envelope', {
     'data': fields.Arbitrary,
     'message': fields.String,
 })
+
 
 @api.route('/')
 class IndicatorList(Resource):
@@ -106,7 +104,7 @@ class IndicatorList(Resource):
 
         except Exception as e:
             logger.error(e)
-            if logger.getEffectiveLevel() == logger.DEBUG:
+            if logger.getEffectiveLevel() == logging.DEBUG:
                 traceback.print_exc()
             return api.abort(500)
 
@@ -175,7 +173,8 @@ class IndicatorList(Resource):
         if request.args.get('q'):
             filters['indicator'] = request.args.get('q')
 
-        if not filters.get('confidence'):
+        if not filters.get('confidence') \
+                and not filters.get('no_feed', '0') == '1' and not filters.get('indicator'):
             filters['confidence'] = CONFIDENCE_DEFAULT
 
         return filters
@@ -184,6 +183,7 @@ class IndicatorList(Resource):
     @api.param('itype', 'The indicator identifier')
     @api.param('tags', 'The indicator identifier')
     @api.param('confidence', 'The indicator identifier')
+    @api.param('probability')
     @api.param('reported_at', 'The indicator identifier')
     @api.param('today')
     @api.param('hours')
@@ -197,20 +197,32 @@ class IndicatorList(Resource):
         if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
             return {'message': 'q OR tags|itype params required'}, 400
 
-        if request.args.get('nofeed', '0') == '1':
+        if filters.get('indicator') or filters.get('no_feed', '0') == '1':
+            if filters.get('no_feed'):
+                del filters['no_feed']
             return self._pull_feed(filters, agg=False), 200
 
         f = feed_factory(filters['itype'])
-        feed = f().process(
-            self._pull_feed(filters),
-            self._pull_whitelist(filters)
-        )
 
+        tags = set([filters.get('tags')])
+        if 'whitelist' in tags:
+            feed = f(
+                self._pull_feed(filters),
+                [],
+            )
+        else:
+            feed = list(f(
+                self._pull_feed(filters),
+                self._pull_whitelist(filters)
+            ))
+
+        feed = aggregate(feed)
+        # aggregate
+        # TODO - stream?
         return feed, 200
 
     @api.doc('create_indicator(s)')
     @api.param('nowait', 'Submit but do not wait for a response')
-    @api.marshal_with(envelope, code=201, description='Indicator created')
     def post(self):
         """Create an Indicator"""
         if len(request.data) == 0:
@@ -237,13 +249,13 @@ class IndicatorList(Resource):
         except CIFBusy:
             return api.abort(503)
 
+        except AuthError:
+            return api.abort(401)
+
         except Exception as e:
             logger.error(e)
             import traceback
             traceback.print_exc()
             return api.abort(400)
-
-        except AuthError:
-            return api.abort(401)
 
         return {'data': r, 'message': 'success'}, 201

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import inspect
 import logging
@@ -24,7 +24,6 @@ from cif.constants import STORE_ADDR, PYVERSION
 from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cif.exceptions import StoreLockError
-from csirtg_indicator import InvalidIndicator
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, load_plugin
 
 from .ping import PingHandler
@@ -46,7 +45,7 @@ CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)  # seconds to fl
 CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)  # num of records before we start throttling a token
 
 # seconds of in-activity before we remove from the penalty box
-CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 300)
+CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 5)
 
 # queue max to flush before we hit CIF_STORE_QUEUE_FLUSH mark
 CREATE_QUEUE_MAX = os.environ.get('CIF_STORE_QUEUE_MAX', 1000)
@@ -103,13 +102,12 @@ class Store(multiprocessing.Process):
                 and (self.create_queue_count < self.create_queue_max):
             return last_flushed
 
-        logger.debug('flushing queue')
         self._flush_create_queue()
 
         for t in list(self.create_queue):
             self.create_queue[t]['messages'] = []
 
-            # if we've not seen activity in 300s reset the counter
+            # if we've not seen activity, reset the counter
             if self.create_queue[t]['count'] > 0:
                 if (time.time() - self.create_queue[t]['last_activity']) > self.create_queue_wait:
                     logger.debug('pruning {} from create_queue'.format(t))
@@ -139,9 +137,9 @@ class Store(multiprocessing.Process):
             confidence=10,
             tags='search',
             provider=t['username'],
-            firsttime=ts,
-            lasttime=ts,
-            reporttime=ts,
+            first_at=ts,
+            last_at=ts,
+            reported_at=ts,
             group=t['groups'][0],
             count=1,
         )
@@ -250,7 +248,7 @@ class Store(multiprocessing.Process):
         except InvalidSearch as e:
             err = 'invalid search'
 
-        except InvalidIndicator as e:
+        except ValueError as e:
             err = 'invalid indicator {}'.format(e)
 
         except Exception as e:
@@ -281,7 +279,7 @@ class Store(multiprocessing.Process):
     def _check_indicator(self, i, t):
         for e in REQUIRED_ATTRIBUTES:
             if not i.get(e):
-                raise InvalidIndicator('missing %s' % e)
+                raise ValueError('missing %s' % e)
 
         if i['group'] not in t['groups']:
             raise AuthError('unable to write to %s' % i['group'])
@@ -353,6 +351,21 @@ class Store(multiprocessing.Process):
 
         try:
             x = self.store.indicators.search(t, data)
+        except Exception as e:
+            logger.error(e)
+
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                import traceback
+                traceback.print_exc()
+
+            raise InvalidSearch('invalid search')
+
+        return x
+
+    def handle_graph_search(self, token, data, **kwargs):
+        t = self.store.tokens.read(token)
+        try:
+            x = self.store.indicators.search_graph(t, data)
         except Exception as e:
             logger.error(e)
 

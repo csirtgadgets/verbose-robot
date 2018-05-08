@@ -6,13 +6,16 @@ import ipaddress
 import re
 import logging
 import time
+from pprint import pprint
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
 from sqlalchemy.ext.declarative import declarative_base
 
+import networkx as nx
+from networkx.readwrite import json_graph
+
 from csirtg_indicator import resolve_itype
-from csirtg_indicator.exceptions import InvalidIndicator
 from cifsdk.exceptions import InvalidSearch
 from cifsdk.constants import VALID_FILTERS, DATA_PATH, PYVERSION
 from cif.store.plugin.indicator import IndicatorManagerPlugin
@@ -29,6 +32,8 @@ if PYVERSION > 2:
 REQUIRED_FIELDS = ['provider', 'indicator', 'tags', 'group', 'itype']
 HASH_TYPES = ['sha1', 'sha256', 'sha512', 'md5']
 
+GRAPH_PATH = os.getenv('CIF_STORE_GRAPH_PATH', 'cifv4.gpickle')
+GRAPH_GEXF_PATH = os.getenv('CIF_STORE_GRAPH_GEXF_PATH', 'cifv4.gexf')
 
 Base = declarative_base()
 
@@ -228,6 +233,12 @@ class IndicatorManager(IndicatorManagerPlugin):
         self.handle = handle
         Base.metadata.create_all(engine)
 
+        self.graph = nx.Graph()
+
+        if os.path.exists(GRAPH_PATH):
+            self.graph = nx.read_gpickle(GRAPH_PATH)
+
+
     def to_dict(self, obj):
         d = {}
         for col in class_mapper(obj.__class__).mapped_table.c:
@@ -257,7 +268,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         for f in REQUIRED_FIELDS:
             if not i.get(f):
-                raise InvalidIndicator("Missing required field: {} for \n{}".format(f, i))
+                raise ValueError("Missing required field: {} for \n{}".format(f, i))
 
     def create(self, token, data):
         return self.upsert(token, data)
@@ -278,7 +289,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         try:
             itype = resolve_itype(i)
-        except InvalidIndicator as e:
+        except TypeError as e:
             logger.error(e)
             s = s.join(Message).filter(Indicator.Message.like('%{}%'.format(i)))
             return s
@@ -335,7 +346,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             s = s.join(Hash).filter(Hash.hash == str(i))
             return s
 
-        raise InvalidIndicator
+        raise ValueError
 
     def _filter_terms(self, filters, s):
 
@@ -367,10 +378,17 @@ class IndicatorManager(IndicatorManagerPlugin):
             elif k == 'probability':
                 if ',' in str(v):
                     start, end = str(v).split(',')
-                    s = s.filter(Indicator.probability >= float(start))
-                    s = s.filter(Indicator.probability <= float(end))
+                    if start == 0:
+                        s = s.filter(or_(Indicator.probability >= float(start), Indicator.probability == None))
+                        s = s.filter(Indicator.probability <= float(end))
+                    else:
+                        s = s.filter(Indicator.probability >= float(start))
+                        s = s.filter(Indicator.probability <= float(end))
                 else:
-                    s = s.filter(Indicator.probability >= float(v))
+                    if float(v) == 0:
+                        s = s.filter(or_(Indicator.probability == None, Indicator.probability >= float(v)))
+                    else:
+                        s = s.filter(Indicator.probability >= float(v))
 
             elif k == 'itype':
                 s = s.filter(Indicator.itype == v)
@@ -475,7 +493,7 @@ class IndicatorManager(IndicatorManagerPlugin):
         return rv
 
     def _upsert_itype(self, s, i):
-        if i.itype is 'ipv4':
+        if i.itype == 'ipv4':
             match = re.search('^(\S+)\/(\d+)$', i.indicator)  # TODO -- use ipaddress
             if match:
                 ipv4 = Ipv4(ipv4=match.group(1), mask=match.group(2), indicator=i)
@@ -484,7 +502,7 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             s.add(ipv4)
 
-        elif i.itype is 'ipv6':
+        elif i.itype == 'ipv6':
             match = re.search('^(\S+)\/(\d+)$', i.itype)  # TODO -- use ipaddress
             if match:
                 ip = Ipv6(ip=match.group(1), mask=match.group(2), indicator=i)
@@ -493,19 +511,52 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             s.add(ip)
 
-        elif i.itype is 'fqdn':
+        elif i.itype == 'fqdn':
             fqdn = Fqdn(fqdn=i.indicator, indicator=i)
             s.add(fqdn)
 
-        elif i.itype is 'url':
+        elif i.itype == 'url':
             url = Url(url=i.indicator, indicator=i)
             s.add(url)
 
-        elif i.itype in HASH_TYPES:
+        elif i.itype == HASH_TYPES:
             h = Hash(hash=i.indicator, indicator=i)
             s.add(h)
 
         return s
+
+    def _insert_graph(self, i):
+        g = self.graph
+
+        g.add_node(i['indicator'], itype=i['itype'])
+        for t in i.get('tags'):
+            g.add_node(t)
+            g.add_edge(i['indicator'], t)
+
+        pprint(i)
+
+        reported_at = arrow.get(i['reported_at'])
+        reported_at = '{}'.format(reported_at.format('YYYY-MM-DD'))
+        g.add_node(reported_at)
+        g.add_edge(i['indicator'], reported_at)
+
+        for a in ['asn', 'asn_desc', 'cc', 'timezone', 'region', 'city']:
+            if not i.get(a):
+                continue
+
+            g.add_node(i[a])
+            g.add_edge(i['indicator'], i[a])
+
+        if i.get('peers'):
+            for p in i['peers']:
+                for a in ['asn', 'cc', 'prefix']:
+                    g.add_node(p[a])
+                    g.add_edge(i['indicator'], p[a])
+
+    def search_graph(self, token, data, **kwargs):
+        rv = json_graph.node_link_data(self.graph)
+
+        return rv
 
     def upsert(self, token, data, **kwargs):
         if type(data) == dict:
@@ -519,6 +570,8 @@ class IndicatorManager(IndicatorManagerPlugin):
         for d in data:
 
             tags = d.get("tags", [])
+
+            self._insert_graph(d)
 
             if len(tags) > 0:
                 if isinstance(tags, basestring):
@@ -562,14 +615,18 @@ class IndicatorManager(IndicatorManagerPlugin):
                 i = i.join(Tag).filter(Tag.tag == tags[0])
 
             r = i.first()
+            if r and not isinstance(r, Indicator):
+                r = r.get(i.indicator_id)
 
             # if the record exists..
-            if r and d.get('last_at') and arrow.get(d['last_at']).datetime <= arrow.get(r.last_at).datetime:
+            if r and d.get('last_at') and arrow.get(d.get('last_at')).datetime <= arrow.get(r.last_at).datetime:
                 logger.debug('skipping: %s' % d['indicator'])
                 continue
 
             if r:
                 r.count += 1
+                if not d.get('last_at'):
+                    d['last_at'] = arrow.utcnow()
                 r.last_at = arrow.get(d['last_at']).datetime.replace(tzinfo=None)
 
                 r.reported_at = d.get('reported_at', arrow.utcnow().datetime)
@@ -613,5 +670,7 @@ class IndicatorManager(IndicatorManagerPlugin):
         logger.debug('committing')
         start = time.time()
         s.commit()
+        nx.write_gpickle(self.graph, GRAPH_PATH)
+        nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
         logger.debug('done: %0.2f' % (time.time() - start))
         return n

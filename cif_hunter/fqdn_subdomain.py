@@ -7,13 +7,11 @@ def process(i):
     if i.itype != 'fqdn':
         return
 
-    if 'search' in i.tags:
-        return
-
     if not i.is_subdomain():
         return
 
     fqdn = Indicator(**i.__dict__())
+    fqdn.probability = 0
     fqdn.indicator = i.is_subdomain()
     fqdn.lasttime = arrow.utcnow()
 
@@ -22,5 +20,5 @@ def process(i):
     except InvalidIndicator as e:
         return
 
-    fqdn.confidence = (fqdn.confidence - 3) if fqdn.confidence >= 3 else 0
+    fqdn.confidence = 1
     return fqdn

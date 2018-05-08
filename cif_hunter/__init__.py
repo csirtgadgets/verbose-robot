@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import ujson as json
 import logging
@@ -91,7 +91,7 @@ class Hunter(multiprocessing.Process):
                     data = Indicator(
                         indicator=data['indicator'],
                         tags='search',
-                        confidence=10,
+                        confidence=4,
                         group='everyone',
                         tlp='amber',
                     ).__dict__()
@@ -124,7 +124,9 @@ class Hunter(multiprocessing.Process):
                 except Exception as e:
                     logger.error(e)
                     logger.error('[{}] giving up on: {}'.format(p, d))
-
+                    if logger.getEffectiveLevel() == logging.DEBUG:
+                        import traceback
+                        traceback.print_exc()
 
 
 def main():

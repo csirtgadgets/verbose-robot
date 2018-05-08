@@ -15,9 +15,10 @@ def process(i):
     prefix = '.'.join(prefix)
 
     ii = Indicator(**i.__dict__())
+    ii.probability = 0
     ii.lasttime = arrow.utcnow()
 
     ii.indicator = prefix
     ii.tags = ['whitelist']
-    ii.confidence = (ii.confidence - 2) if ii.confidence >= 2 else 0
+    ii.confidence = 2
     return ii

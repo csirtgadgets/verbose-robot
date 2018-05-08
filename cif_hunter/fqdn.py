@@ -6,6 +6,8 @@ from csirtg_indicator import resolve_itype
 from csirtg_indicator.exceptions import InvalidIndicator
 import arrow
 import os
+import copy
+from pprint import pprint
 
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
@@ -23,11 +25,10 @@ def process(i):
     if i.itype != 'fqdn':
         return
 
-    if 'search' in i.tags:
-        return
-
     try:
         r = resolve_ns(i.indicator)
+        if not r:
+            return
     except Timeout:
         return
 
@@ -49,11 +50,18 @@ def process(i):
 
         ip.itype = 'ipv4'
         ip.rdata = i.indicator
-        ip.confidence = (ip.confidence - 2) if ip.confidence >= 2 else 0
+        ip.confidence = 1
+        ip.probability = 0
+        rv.append(ip)
+
+        pdns = Indicator(**copy.deepcopy(i.__dict__()))
 
         # also create a passive dns tag
-        ip.tags = 'pdns'
-        ip.confidence = 10
-        rv.append(ip)
+        pdns.tags = 'pdns'
+        pdns.confidence = 4
+        pdns.probability = i.probability
+        pdns.indicator = ip.indicator
+        pdns.rdata = i.indicator
+        rv.append(pdns)
 
     return rv

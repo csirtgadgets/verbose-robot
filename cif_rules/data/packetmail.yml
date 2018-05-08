@@ -1,0 +1,19 @@
+
+defaults:
+  tags: scanner, honeynet, suspicious
+
+feeds:
+  iprep:
+    remote: https://packetmail.net/iprep.txt
+    defaults:
+      description: 'TCP SYN to a non-listening service or daemon'
+
+  iprep_mail:
+    remote: https://packetmail.net/iprep_mail.txt
+    defaults:
+      description: honeypot traffic
+
+  iprep_ramnode:
+    remote: https://packetmail.net/iprep_ramnode.txt
+    defaults:
+      description: 'TCP SYN to a non-listening service or daemon'
