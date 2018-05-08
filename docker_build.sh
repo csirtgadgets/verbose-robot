@@ -2,9 +2,9 @@
 
 set -e
 
-docker stop verbose-robot
-docker rm verbose-robot
-docker image remove csirtgadgets/verbose-robot
+#docker stop verbose-robot
+#docker rm verbose-robot
+#docker image remove csirtgadgets/verbose-robot
 
 rm -rf dist/*
 python3 setup.py sdist
