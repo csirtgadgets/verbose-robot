@@ -51,8 +51,6 @@ setup(
     install_requires=[
         'Flask',
         'ujson',
-        'csirtg_fm',
-        #'cifsdk>=4.0',
     ],
     scripts=[],
     entry_points={
