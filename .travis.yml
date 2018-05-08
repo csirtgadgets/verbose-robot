@@ -1,0 +1,25 @@
+sudo: required
+dist: trusty
+language: python
+cache:
+    - apt
+    - pip
+
+python:
+  - 3.6
+
+install:
+  - pip install pip --upgrade
+  - easy_install distribute
+  - pip install setuptools --upgrade
+  - pip install -r dev_requirements.txt
+
+script:
+  - python setup.py test
+  - python setup.py sdist bdist bdist_wheel
+
+notifications:
+  email:
+    on_success: never
+    on_failure: never
+

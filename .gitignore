@@ -5,6 +5,7 @@ Vagrantfile_*
 Vagrantfile\.*
 Dockerfile\.*
 /*.yml
+!.travis.yml
 *.retry
 coverage_html_report/
 *.mmdb
