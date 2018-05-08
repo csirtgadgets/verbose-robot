@@ -2,9 +2,10 @@
 
 set -e
 
-#chown -R cif:cif /var/lib/cif
-#chown -R cif:cif /var/log/cif
-#chown -R cif:cif /var/lib/fm
-#chown -R cif:cif /etc/cif
+chown -R cif:cif /var/lib/cif
+chown -R cif:cif /var/log/cif
+chown -R cif:cif /var/lib/fm
+chown -R cif:cif /etc/cif
+chown -R cif:cif /home/cif
 
-/usr/bin/supervisord -n -c /usr/local/etc/supervisord.conf
+/usr/local/bin/supervisord -n -c /usr/local/etc/supervisord.conf

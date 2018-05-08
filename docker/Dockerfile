@@ -5,10 +5,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 EXPOSE 5000
 
-COPY entrypoint /
-COPY GeoIP.conf /etc/
-COPY supervisord.conf /usr/local/etc/supervisord.conf
-
+COPY docker/entrypoint /
+COPY docker/GeoIP.conf /etc/
+COPY docker/supervisord.conf /usr/local/etc/supervisord.conf
 RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections
 
 RUN apt-get update
@@ -17,7 +16,12 @@ RUN pip3 install pip --upgrade
 
 RUN geoipupdate -v
 
-RUN cd /tmp && git clone https://github.com/csirtgadgets/verbose-robot
+RUN rm -rf /tmp/verbose-robot
+COPY dist/*.tar.gz /tmp/verbose-robot.tar.gz
+RUN mkdir /tmp/verbose-robot
+RUN cd /tmp && tar -zxvf /tmp/verbose-robot.tar.gz --strip-components=1 -C /tmp/verbose-robot
+#COPY * -R /tmp/verbose-robot
+#RUN cd /tmp && git clone https://github.com/csirtgadgets/verbose-robot
 
 WORKDIR /tmp/verbose-robot
 
@@ -40,4 +44,4 @@ VOLUME /var/log/cif
 WORKDIR /home/cif
 
 #ENTRYPOINT ["python3"]
-#ENTRYPOINT ["/entrypoint", "-n"]
+ENTRYPOINT ["/entrypoint", "-n"]
