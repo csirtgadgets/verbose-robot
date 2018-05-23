@@ -8,12 +8,14 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import multiprocessing
 import os
+import yaml
+import requests
 from pprint import pprint
 
 from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser
-from .constants import ROUTER_STREAM_ADDR, ROUTER_STREAM_ADDR_PUB
+from cif.constants import ROUTER_WEBHOOK_ADDR
 
-TRACE = os.getenv('CIF_STREAMER_TRACE', False)
+TRACE = os.getenv('CIF_WEBHOOK_TRACE', False)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -25,11 +27,21 @@ if TRACE == '1':
 logger = logging.getLogger(__name__)
 
 
-class Streamer(multiprocessing.Process):
+class Webhook(multiprocessing.Process):
 
     def __init__(self):
         multiprocessing.Process.__init__(self)
         self.exit = multiprocessing.Event()
+
+        if not os.path.exists('webhooks2.yml'):
+            logger.error('webhooks.yml file is missing...')
+            return
+
+        with open('webhooks.yml') as f:
+            try:
+                self.hooks = yaml.load(f)
+            except yaml.YAMLError as exc:
+                logger.error(exc)
 
     def terminate(self):
         self.exit.set()
@@ -38,14 +50,47 @@ class Streamer(multiprocessing.Process):
         logger.info('shutting down')
         self.terminate()
 
+    def is_search(self, data):
+        if data.get('indicator') and data.get('limit'):
+            return True
+
+        if not data.get('tags'):
+            return
+
+        if 'search' in set(data['tags']):
+            return True
+
+    def _to_slack(self, data):
+        return {
+            'text': "search: %s" % data.get('indicator')
+        }
+
+    def send(self, data):
+
+        if not self.is_search(data):
+            return
+
+        for h in self.hooks:
+            if h == 'slack':
+                data = self._to_slack(data)
+
+            if isinstance(data, dict):
+                data = json.dumps(data)
+
+            resp = requests.post(self.hooks[h], data=data, headers={'Content-Type': 'application/json'}, timeout=5)
+            logger.debug(resp.status_code)
+            if resp.status_code != 200:
+                logger.error(resp.text)
+
+        logger.debug('sending..')
+
+        # send request
+
     def start(self):
         context = zmq.Context()
 
         router = context.socket(zmq.PULL)
-        publisher = context.socket(zmq.PUB)
-
-        publisher.bind(ROUTER_STREAM_ADDR_PUB)
-        router.connect(ROUTER_STREAM_ADDR)
+        router.connect(ROUTER_WEBHOOK_ADDR)
 
         poller = zmq.Poller()
         poller.register(router, zmq.POLLIN)
@@ -60,14 +105,10 @@ class Streamer(multiprocessing.Process):
                 continue
 
             data = router.recv_multipart()
-
             logger.debug('got data..')
             logger.debug(data)
 
-            logger.debug('sending..')
-            publisher.send_multipart(data)
-
-            data = json.loads(data[0])
+            self.send(json.loads(data[0]))
 
 
 def main():
@@ -94,7 +135,7 @@ def main():
     setup_runtime_path(args.runtime_path)
     # setup_signals(__name__)
 
-    s = Streamer()
+    s = Webhook()
 
     try:
         s.start()
