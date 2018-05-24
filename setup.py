@@ -56,11 +56,11 @@ setup(
     entry_points={
         'console_scripts': [
             'cif-router=cif.router:main',
-            'cif-httpd=cif_httpd.app:main',
+            'cif-httpd=cif.httpd.app:main',
             'cif=cifsdk.cli:main',
             'cif-tokens=cifsdk.tokens:main',
-            'cif-hunter=cif_hunter:main',
-            'cif-gatherer=cif_gatherer:main',
+            'cif-hunter=cif.hunter:main',
+            'cif-gatherer=cif.gatherer:main',
             'cif-store=cif.store:main',
             'cif-streamer=cif.streamer:main'
         ]

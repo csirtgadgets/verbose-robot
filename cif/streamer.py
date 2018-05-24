@@ -69,6 +69,8 @@ class Streamer(multiprocessing.Process):
 
             data = json.loads(data[0])
 
+        context.term()
+
 
 def main():
     p = get_argument_parser()

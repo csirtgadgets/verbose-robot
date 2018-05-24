@@ -2,9 +2,14 @@ import ujson as json
 from pprint import pprint
 import msgpack
 import sys
-import zmq
 import logging
 import os
+
+try:
+    import zmq
+except ImportError:
+    print("Requires pyzmq")
+    raise SystemExit
 
 TRACE = os.getenv('CIFSDK_MSG_TRACE', False)
 

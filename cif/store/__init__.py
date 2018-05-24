@@ -19,9 +19,9 @@ from base64 import b64decode
 
 import cif.store
 
-from cifsdk_msg import Msg
-from cif.constants import STORE_ADDR, PYVERSION, STORE_SEED_TOKEN
-from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH
+from cifsdk.msg import Msg
+from cif.constants import STORE_ADDR, PYVERSION
+from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cif.exceptions import StoreLockError
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, load_plugin
@@ -182,10 +182,9 @@ class Store(multiprocessing.Process):
         self.context = zmq.Context()
         self.router = self.context.socket(zmq.ROUTER)
 
-        self.token_handler.token_create_admin()
-
-        if STORE_SEED_TOKEN:
-            self.token_handler.token_create_smrt()
+        t = self.token_handler.token_create_admin()
+        if t:
+            self.token_handler.token_create_smrt(token=t)
 
         self.router.connect(self.store_addr)
 

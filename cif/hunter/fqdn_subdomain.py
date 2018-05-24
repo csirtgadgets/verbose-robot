@@ -1,5 +1,4 @@
 from csirtg_indicator import Indicator, resolve_itype
-from csirtg_indicator.exceptions import InvalidIndicator
 import arrow
 
 
@@ -17,7 +16,7 @@ def process(i):
 
     try:
         resolve_itype(fqdn.indicator)
-    except InvalidIndicator as e:
+    except:
         return
 
     fqdn.confidence = 1

@@ -5,10 +5,15 @@ import os
 import zlib
 from zmq.eventloop.ioloop import IOLoop
 from pprint import pprint
-import zmq
+
+try:
+    import zmq
+except ImportError:
+    print("Requires pyzmq")
+    raise SystemExit
 
 from cifsdk.client import Client
-from cifsdk_msg import Msg
+from cifsdk.msg import Msg
 from cifsdk.exceptions import AuthError, CIFConnectionError, TimeoutError, InvalidSearch, CIFBusy
 from cifsdk.constants import PYVERSION
 from csirtg_indicator import Indicator

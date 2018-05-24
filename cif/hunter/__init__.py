@@ -7,15 +7,14 @@ import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import multiprocessing
-import os, traceback
+import os
 
-from cifsdk_zmq import ZMQ as Client
+from cifsdk.client.zmq import ZMQ as Client
 from cif.constants import HUNTER_ADDR, HUNTER_SINK_ADDR
-import csirtg_indicator
 from csirtg_indicator import Indicator
 from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser, load_plugins
-import cif_hunter
-from pprint import pprint
+
+import cif.hunter
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +33,11 @@ if TRACE in [1, '1']:
 
 
 class Hunter(multiprocessing.Process):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return self
 
     def __init__(self, token=None):
         multiprocessing.Process.__init__(self)
@@ -55,11 +59,12 @@ class Hunter(multiprocessing.Process):
         self.exit.set()
 
     def start(self):
-        plugins = load_plugins(cif_hunter.__path__)
+        plugins = load_plugins(cif.hunter.__path__)
 
         socket = zmq.Context().socket(zmq.PULL)
         socket.SNDTIMEO = SNDTIMEO
         socket.set_hwm(ZMQ_HWM)
+        socket.setsockopt(zmq.LINGER, 3)
 
         socket.connect(HUNTER_ADDR)
 
@@ -127,6 +132,10 @@ class Hunter(multiprocessing.Process):
                     if logger.getEffectiveLevel() == logging.DEBUG:
                         import traceback
                         traceback.print_exc()
+
+        socket.close()
+        router.context.term()
+        del router
 
 
 def main():

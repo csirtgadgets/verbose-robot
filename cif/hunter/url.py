@@ -1,12 +1,6 @@
 import logging, arrow
-
 from csirtg_indicator import Indicator, resolve_itype
-from csirtg_indicator.exceptions import InvalidIndicator
-
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 logger = logging.getLogger('cif_hunter')
@@ -22,7 +16,7 @@ def process(i):
 
     try:
         resolve_itype(u.hostname)
-    except InvalidIndicator as e:
+    except TypeError as e:
         logger.error(u.hostname)
         logger.error(e)
         return

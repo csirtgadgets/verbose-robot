@@ -1,10 +1,7 @@
-import logging
-import os
 from dns.resolver import Timeout
 import arrow
 
 from csirtg_indicator import resolve_itype
-from csirtg_indicator.exceptions import InvalidIndicator
 from cifsdk.utils.network import resolve_ns
 from csirtg_indicator import Indicator
 import os
@@ -42,7 +39,7 @@ def process(i):
 
         try:
             resolve_itype(ip.indicator)
-        except InvalidIndicator:
+        except:
             continue
 
         ip.itype = 'ipv4'

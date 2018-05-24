@@ -53,6 +53,11 @@ class TokenManagerPlugin(object):
         if len(t) > 0:
             return t[0]['token']
 
+    def smrt_exists(self):
+        t = list(self.search({'username': 'csirtg-smrt'}))
+        if len(t) > 0:
+            return t[0]['token']
+
     def check(self, token, k, v=True):
         self._flush_cache()
         if token in self._cache and self._cache[token].get(k):

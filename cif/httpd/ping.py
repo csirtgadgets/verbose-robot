@@ -1,7 +1,7 @@
 from flask_restplus import Namespace, Resource, fields
 from flask import session
 import time
-from cifsdk_zmq import ZMQ as Client
+from cifsdk.client.zmq import ZMQ as Client
 
 from cifsdk.constants import ROUTER_ADDR
 from cifsdk.exceptions import AuthError, TimeoutError

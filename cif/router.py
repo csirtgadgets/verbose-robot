@@ -9,21 +9,19 @@ from argparse import RawDescriptionHelpFormatter
 from time import sleep
 import zmq
 import os
-import sys
-from pprint import pprint
 
 from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
-    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOK_ENABLED, ROUTER_WEBHOOK_ADDR
+    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR
 from cifsdk.constants import CONFIG_PATH
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setup_runtime_path
-from cif_hunter import Hunter
+from cif.hunter import Hunter
 from cif.store import Store
-from cif_gatherer import Gatherer
+from cif.gatherer import Gatherer
 from cif.streamer import Streamer
 from cif.webhooks import Webhooks
 import time
 import multiprocessing as mp
-from cifsdk_msg import Msg
+from cifsdk.msg import Msg
 
 
 HUNTER_MIN_CONFIDENCE = 1
@@ -85,7 +83,7 @@ class Router(object):
         if ROUTER_STREAM_ENABLED:
             self._init_streamer()
 
-        if ROUTER_WEBHOOK_ENABLED:
+        if ROUTER_WEBHOOKS_ENABLED:
             self._init_webhooks()
 
         self._init_frontend(listen)
@@ -98,7 +96,7 @@ class Router(object):
     def _init_webhooks(self):
         logger.debug('enabling webhooks service..')
         self.webhooks_s = self.context.socket(zmq.PUSH)
-        self.webhooks_s.bind(ROUTER_WEBHOOK_ADDR)
+        self.webhooks_s.bind(ROUTER_WEBHOOKS_ADDR)
         self.webhooks = mp.Process(target=Webhooks().start)
         self.webhooks.start()
 
@@ -158,15 +156,28 @@ class Router(object):
         for h in self.hunters:
             h.terminate()
 
+        sleep(1)  # cleanup
+
         logger.debug('stopping gatherers')
         for g in self.gatherers:
             g.terminate()
+
+        sleep(1)  # cleanup
 
         self.streamer.terminate()
         self.webhooks.terminate()
         self.store_p.terminate()
 
-        sleep(0.01)
+        if self.streamer_s:
+            self.streamer_s.close()
+
+        if self.webhooks_s.close():
+            self.webhooks_s.close()
+
+        self.frontend_s.close()
+
+        sleep(1)  # cleanup
+
 
     def start(self):
         logger.debug('starting loop')
@@ -239,7 +250,7 @@ class Router(object):
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
 
-        if self.hunters is False and not ROUTER_STREAM_ENABLED and not ROUTER_WEBHOOK_ENABLED:
+        if self.hunters is False and not ROUTER_STREAM_ENABLED and not ROUTER_WEBHOOKS_ENABLED:
             return
 
         data = json.loads(data)
@@ -252,7 +263,7 @@ class Router(object):
             if ROUTER_STREAM_ENABLED:
                 self.streamer_s.send_string(s)
 
-            if ROUTER_WEBHOOK_ENABLED:
+            if ROUTER_WEBHOOKS_ENABLED:
                 self.webhooks_s.send_sting(s)
 
             if self.hunters and d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
@@ -261,13 +272,14 @@ class Router(object):
     def handle_indicators_search(self, id, mtype, token, data):
         self.handle_message_default(id, mtype, token, data)
 
+        # TODO- issue here with un-authorized messages, may need to re-think using store success/fail status
         if self.hunters:
             self.hunters_s.send_string(data)
 
         if ROUTER_STREAM_ENABLED:
             self.streamer_s.send_string(data)
 
-        if ROUTER_WEBHOOK_ENABLED:
+        if ROUTER_WEBHOOKS_ENABLED:
             self.webhooks_s.send_string(data)
 
     def handle_indicators_create(self, id, mtype, token, data):

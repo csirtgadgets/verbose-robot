@@ -9,10 +9,10 @@ import os
 from pprint import pprint
 
 from csirtg_indicator import Indicator
-import cif_gatherer
 from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
-from cifsdk_msg import Msg
+from cifsdk.msg import Msg
 from cifsdk.utils import load_plugins
+import cif.gatherer
 
 
 SNDTIMEO = 30000
@@ -27,6 +27,11 @@ if TRACE:
 
 
 class Gatherer(multiprocessing.Process):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return self
 
     def __init__(self, pull=GATHERER_ADDR, push=GATHERER_SINK_ADDR):
         multiprocessing.Process.__init__(self)
@@ -34,12 +39,10 @@ class Gatherer(multiprocessing.Process):
         self.push = push
         self.exit = multiprocessing.Event()
 
-        self.gatherers = load_plugins(cif_gatherer.__path__)
+        self.gatherers = load_plugins(cif.gatherer.__path__)
 
     def terminate(self):
         self.exit.set()
-        from time import sleep
-        sleep(0.01)
 
     def process(self, data):
         if isinstance(data, dict):
@@ -66,6 +69,8 @@ class Gatherer(multiprocessing.Process):
         push_s = context.socket(zmq.PUSH)
 
         push_s.SNDTIMEO = SNDTIMEO
+        push_s.setsockopt(zmq.LINGER, 3)
+        pull_s.setsockopt(zmq.LINGER, 3)
 
         pull_s.connect(self.pull)
         push_s.connect(self.push)
@@ -91,6 +96,9 @@ class Gatherer(multiprocessing.Process):
             data = self.process(data)
             Msg(id=id, mtype=mtype, token=token, data=data).send(push_s)
 
+        # pull_s.close()
+        # push_s.close()
+        # context.term()
 
 
 def main():

@@ -98,7 +98,7 @@ def pull_token():
 @api.doc('firehose')
 def firehose(ws):
     """Firehose"""
-    from cifsdk_zmq import ZMQ as Client
+    from cifsdk.client.zmq import ZMQ as Client
     from cifsdk.constants import ROUTER_ADDR
     from cifsdk.exceptions import AuthError, TimeoutError
     # check authorization

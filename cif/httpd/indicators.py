@@ -9,7 +9,7 @@ from flask import request, session
 
 from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, HTTPD_FEED_WHITELIST_CONFIDENCE
 from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
-from cifsdk_zmq import ZMQ as Client
+from cifsdk.client.zmq import ZMQ as Client
 from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
 from pprint import pprint
 

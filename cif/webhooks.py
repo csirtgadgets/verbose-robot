@@ -9,7 +9,7 @@ import yaml
 import requests
 from pprint import pprint
 
-from cif.constants import ROUTER_WEBHOOK_ADDR
+from cif.constants import ROUTER_WEBHOOKS_ADDR
 
 TRACE = os.getenv('CIF_WEBHOOK_TRACE', False)
 
@@ -85,7 +85,7 @@ class Webhooks(multiprocessing.Process):
         context = zmq.Context()
 
         router = context.socket(zmq.PULL)
-        router.connect(ROUTER_WEBHOOK_ADDR)
+        router.connect(ROUTER_WEBHOOKS_ADDR)
 
         poller = zmq.Poller()
         poller.register(router, zmq.POLLIN)
@@ -104,3 +104,7 @@ class Webhooks(multiprocessing.Process):
             logger.debug(data)
 
             self.send(json.loads(data[0]))
+
+        router.close()
+        context.term()
+        del router
