@@ -1,11 +1,11 @@
-# Getting Started
-
 # Need More Advanced Help? Check out our [Support Options](https://csirtg.io/support)
  * Less time on implementation and customization so you can spend more time protecting the Internet
  * Lessons learned from 10+ years of industry wide threat intel experience, at very little cost
  * Lessons learned from other global CSIRTs
  * No sales calls or long term commitments
  * Influence over future features at a fraction of the cost of custom building
+
+# Getting Started
 
 **This is a PROTOTYPE AND MAY OR (PROBABLY) MAY NOT WORK**
 *We GLADLY ACCEPT PULL REQUESTS*
