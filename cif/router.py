@@ -264,7 +264,7 @@ class Router(object):
                 self.streamer_s.send_string(s)
 
             if ROUTER_WEBHOOKS_ENABLED:
-                self.webhooks_s.send_sting(s)
+                self.webhooks_s.send_string(s)
 
             if self.hunters and d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
                 self.hunters_s.send_string(s)

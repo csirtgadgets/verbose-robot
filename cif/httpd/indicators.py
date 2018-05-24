@@ -3,9 +3,11 @@ import arrow
 import re
 import traceback
 import copy
+from io import StringIO
+import csv
 
 from flask_restplus import Namespace, Resource, fields
-from flask import request, session
+from flask import request, session, make_response
 
 from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, HTTPD_FEED_WHITELIST_CONFIDENCE
 from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
@@ -63,7 +65,9 @@ def feed_factory(name):
 logger = logging.getLogger('cif-httpd')
 
 itypes = ['ipv4', 'ipv6', 'url', 'fqdn', 'sha1', 'sha256', 'sha512', 'email', 'asn']
+
 api = Namespace('indicators', description='Indicator related operations')
+
 
 indicator = api.model('Indicator', {
     'id': fields.String(required=True, description='The indicator id'),
@@ -189,6 +193,7 @@ class IndicatorList(Resource):
     @api.param('hours')
     @api.param('days')
     @api.param('nofeed', 'TBD')
+    @api.param('fmt', 'Return format, default csv [json|csv]')
     @api.doc('list_indicators')
     def get(self):
         """List all indicators"""
@@ -217,8 +222,16 @@ class IndicatorList(Resource):
             ))
 
         feed = aggregate(feed)
-        # aggregate
-        # TODO - stream?
+
+        # https://github.com/noirbizarre/flask-restplus/blob/d4bd1847ae607d3c6c1b3b4fedfc6402e961b9e6/flask_restplus/api.py#L326
+        if 'text/plain' in request.headers.get('Accept'):
+            from csirtg_indicator.format.csv import get_lines
+            csv = ''
+            for l in get_lines(feed):
+                csv += l + "\n"
+
+            return csv, 200
+
         return feed, 200
 
     @api.doc('create_indicator(s)')
