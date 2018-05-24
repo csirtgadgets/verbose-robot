@@ -50,21 +50,18 @@ authorizations = {
 api = Api(app, version='4.0', title='CIFv4 API', description='The CIFv4 REST API', authorizations=authorizations,
           security='apikey')
 
-firehose_api = Namespace('firehose', description='Firehose')
+#firehose_api = Namespace('firehose', description='Firehose (WebSockets)')
 
 APIS = [
     ping_api,
     indicators_api,
     tokens_api,
     health_api,
-    firehose_api,
-    graph_api
+    #graph_api
 ]
 
 for A in APIS:
     api.add_namespace(A)
-
-ns = api.namespace('cif', description='CIF operations')
 
 app.secret_key = SECRET_KEY
 
