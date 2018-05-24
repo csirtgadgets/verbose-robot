@@ -10,7 +10,7 @@ PYVERSION = 2
 if sys.version_info > (3,):
     PYVERSION = 3
 
-TOKEN_LENGTH = 40
+TOKEN_LENGTH = 32
 
 ROUTER_ADDR = "ipc://{}".format(os.path.join(RUNTIME_PATH, 'router.ipc'))
 ROUTER_ADDR = os.getenv('CIF_ROUTER_ADDR', ROUTER_ADDR)
@@ -46,6 +46,8 @@ ROUTER_STREAM_ENABLED = os.getenv('CIF_ROUTER_STREAM_ENABLED', False)
 
 ROUTER_WEBHOOK_ADDR = os.getenv('CIF_ROUTER_WEBHOOK_ADDR', 'ipc://webhook.ipc')
 ROUTER_WEBHOOK_ENABLED = os.getenv('CIF_ROUTER_WEBHOOK_ENABLED', False)
+
+STORE_SEED_TOKEN = os.getenv('CIF_STORE_SEED_TOKEN', None)
 
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 if ENABLED == '1':

@@ -1,6 +1,7 @@
 import logging
 
 from cifsdk.exceptions import AuthError
+from cif.constants import STORE_SEED_TOKEN
 
 GROUPS = ['everyone']
 
@@ -44,6 +45,9 @@ class TokenHandler(object):
             logger.info('admin token exists...')
             return
 
+        if STORE_SEED_TOKEN:
+            token = STORE_SEED_TOKEN
+
         logger.info('admin token does not exist, generating..')
         rv = self.store.tokens.create({
             'username': u'admin',
@@ -58,6 +62,8 @@ class TokenHandler(object):
 
     def token_create_smrt(self, token=None, groups=GROUPS):
         logger.info('generating smrt token')
+        if STORE_SEED_TOKEN:
+            token = STORE_SEED_TOKEN
         rv = self.store.tokens.create({
             'username': u'csirtg-smrt',
             'groups': groups,
