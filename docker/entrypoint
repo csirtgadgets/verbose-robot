@@ -8,4 +8,6 @@ chown -R cif:cif /var/lib/fm
 chown -R cif:cif /etc/cif
 chown -R cif:cif /home/cif
 
+chmod -R 660 /etc/cif/rules
+
 /usr/local/bin/supervisord -n -c /usr/local/etc/supervisord.conf

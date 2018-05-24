@@ -8,7 +8,7 @@ include versioneer.py
 include 'cif'
 include cif/_version.py
 recursive-include test *
-recursive-include cif_rules *
+recursive-include rules *
 global-exclude *.retry
 global-exclude *.pyc
 global-exclude __pycache__

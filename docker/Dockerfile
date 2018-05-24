@@ -36,10 +36,12 @@ RUN rm -rf /tmp/verbose-robot
 
 RUN useradd cif
 
-VOLUME /etc/cif
+VOLUME /etc/cif/rules
 VOLUME /var/lib/cif
 VOLUME /var/lib/fm
 VOLUME /var/log/cif
+
+COPY rules/* /etc/cif/rules/
 
 WORKDIR /home/cif
 
