@@ -33,7 +33,8 @@ def _search(cli, args, options, filters):
         logger.error(e)
 
     else:
-        print(FORMATS[options.get('format')](data=rv, cols=args.columns.split(',')))
+        for l in FORMATS[options.get('format')](data=rv, cols=args.columns.split(',')):
+            print(l)
 
     raise SystemExit
 
@@ -129,7 +130,8 @@ def main():
     p.add_argument('--itype', help='filter by indicator type')
     p.add_argument('--reported_at', help='specify reported_at filter')
     p.add_argument('-n', '--nolog', help='do not log search', action='store_true')
-    p.add_argument('-f', '--format', help='specify output format [default: %(default)s]"', default=FORMAT, choices=FORMATS.keys())
+    p.add_argument('-f', '--format', help='specify output format [default: %(default)s]"',
+                   default=FORMAT, choices=FORMATS.keys())
     p.add_argument('--indicator')
     p.add_argument('--confidence', help="specify confidence level")
     p.add_argument('--probability')
@@ -172,7 +174,7 @@ def main():
     cli = Client(args.remote, args.token, verify_ssl=verify_ssl)
 
     if args.ping or args.ping_indef:
-        _ping(args)
+        _ping(cli, args)
 
     if options.get("submit"):
         _submit(cli, args)

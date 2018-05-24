@@ -19,8 +19,8 @@ from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setu
 from cif_hunter import Hunter
 from cif.store import Store
 from cif_gatherer import Gatherer
-from .streamer import Streamer
-from .webhook import Webhook
+from cif.streamer import Streamer
+from cif.webhooks import Webhooks
 import time
 import multiprocessing as mp
 from cifsdk_msg import Msg
@@ -99,7 +99,7 @@ class Router(object):
         logger.debug('enabling webhooks service..')
         self.webhooks_s = self.context.socket(zmq.PUSH)
         self.webhooks_s.bind(ROUTER_WEBHOOK_ADDR)
-        self.webhooks = mp.Process(target=Webhook().start)
+        self.webhooks = mp.Process(target=Webhooks().start)
         self.webhooks.start()
 
     def _init_streamer(self):
@@ -250,15 +250,13 @@ class Router(object):
             s = json.dumps(d)
 
             if ROUTER_STREAM_ENABLED:
-                logger.debug('sending to streamer...')
                 self.streamer_s.send_string(s)
 
             if ROUTER_WEBHOOK_ENABLED:
-                logger.debug('sending to webhooks...')
                 self.webhooks_s.send_sting(s)
 
-            # if self.hunters and d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
-            #     self.hunters_s.send_string(s)
+            if self.hunters and d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
+                self.hunters_s.send_string(s)
 
     def handle_indicators_search(self, id, mtype, token, data):
         self.handle_message_default(id, mtype, token, data)
@@ -270,7 +268,6 @@ class Router(object):
             self.streamer_s.send_string(data)
 
         if ROUTER_WEBHOOK_ENABLED:
-            logger.debug('sending to webhooks...')
             self.webhooks_s.send_string(data)
 
     def handle_indicators_create(self, id, mtype, token, data):

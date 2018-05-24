@@ -3,16 +3,12 @@
 import ujson as json
 import logging
 import zmq
-import textwrap
-from argparse import ArgumentParser
-from argparse import RawDescriptionHelpFormatter
 import multiprocessing
 import os
 import yaml
 import requests
 from pprint import pprint
 
-from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser
 from cif.constants import ROUTER_WEBHOOK_ADDR
 
 TRACE = os.getenv('CIF_WEBHOOK_TRACE', False)
@@ -23,17 +19,16 @@ logger.setLevel(logging.INFO)
 if TRACE == '1':
     logger.setLevel(logging.DEBUG)
 
-
 logger = logging.getLogger(__name__)
 
 
-class Webhook(multiprocessing.Process):
+class Webhooks(multiprocessing.Process):
 
     def __init__(self):
         multiprocessing.Process.__init__(self)
         self.exit = multiprocessing.Event()
 
-        if not os.path.exists('webhooks2.yml'):
+        if not os.path.exists('webhooks.yml'):
             logger.error('webhooks.yml file is missing...')
             return
 
@@ -51,7 +46,7 @@ class Webhook(multiprocessing.Process):
         self.terminate()
 
     def is_search(self, data):
-        if data.get('indicator') and data.get('limit'):
+        if data.get('indicator') and data.get('limit') and data.get('nolog', '0') == '0':
             return True
 
         if not data.get('tags'):
@@ -67,6 +62,10 @@ class Webhook(multiprocessing.Process):
 
     def send(self, data):
 
+        if len(self.hooks) == 0:
+            logger.info('no webhooks to send to... is your webhooks.yml missing?')
+            return
+
         if not self.is_search(data):
             return
 
@@ -79,12 +78,8 @@ class Webhook(multiprocessing.Process):
 
             resp = requests.post(self.hooks[h], data=data, headers={'Content-Type': 'application/json'}, timeout=5)
             logger.debug(resp.status_code)
-            if resp.status_code != 200:
+            if resp.status_code not in [200, 201]:
                 logger.error(resp.text)
-
-        logger.debug('sending..')
-
-        # send request
 
     def start(self):
         context = zmq.Context()
@@ -109,39 +104,3 @@ class Webhook(multiprocessing.Process):
             logger.debug(data)
 
             self.send(json.loads(data[0]))
-
-
-def main():
-    p = get_argument_parser()
-    p = ArgumentParser(
-        description=textwrap.dedent('''\
-        Env Variables:
-            CIF_ROUTER_STREAM_ADDR
-            CIF_STREAM_ADDR
-
-        example usage:
-            $ cif-streamer -d
-        '''),
-        formatter_class=RawDescriptionHelpFormatter,
-        prog='cif-streamer',
-        parents=[p]
-    )
-
-    args = p.parse_args()
-    setup_logging(args)
-
-    logger.info('loglevel is: {}'.format(logging.getLevelName(logger.getEffectiveLevel())))
-
-    setup_runtime_path(args.runtime_path)
-    # setup_signals(__name__)
-
-    s = Webhook()
-
-    try:
-        s.start()
-    except KeyboardInterrupt:
-        s.stop()
-
-
-if __name__ == "__main__":
-    main()

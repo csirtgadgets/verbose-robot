@@ -7,7 +7,7 @@
 * Performance (Leaner, Faster).
 * Cleaner, Concise APIs
 * Realtime Streaming and Correlation (PUB/SUB/WebSockets)
-* Native [CSIRTG-EX](https://csirtg.io) Integration
+* Native [CSIRTG-X](https://csirtg.io) Integration
 * Native Machine Learning (SKLearn) Integration
 * WebHooks Support
 * Statistical Confidence Model
