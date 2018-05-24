@@ -199,6 +199,8 @@ class IndicatorList(Resource):
         """List all indicators"""
         filters = self._filters_cleanup()
 
+        logger.debug(filters)
+
         if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
             return {'message': 'q OR tags|itype params required'}, 400
 

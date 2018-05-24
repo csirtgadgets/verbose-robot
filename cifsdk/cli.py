@@ -14,10 +14,66 @@ from csirtg_indicator import Indicator
 from cifsdk.client.http import HTTP as Client
 from pprint import pprint
 
+PROFILES = {
+    'splunk': {
+        'format': 'csv',
+        'confidence': 3,
+        'hours': 1,
+        'limit': 25000,
+        'itype': 'ipv4',
+    },
+    'bind': {
+        'format': 'bind',
+        'confidence': 4,
+        'itype': 'fqdn',
+        'days': 45,
+        'tags': 'phishing,malware,botnet',
+        'limit': 250000,
+    },
+    'bro': {
+        'confidence': 3,
+        'format': 'bro',
+        'itype': 'ipv4',
+        'days': 21,
+        'limit': 250000,
+    },
+    'snort': {
+        'confidence': 3,
+        'itype': 'ipv4',
+        'format': 'snort',
+        'days': 21,
+        'limit': 250000,
+    },
+    'firewall': {
+        'format': 'csv',
+        'itype': 'ipv4',
+        'confidence': 4,
+        'days': 21,
+        'tags': 'scanner,bruteforce,botnet',
+        'limit': 25000
+    },
+    'sem': {
+        'format': 'csv',
+        'confidence': 3,
+        'hours': 1,
+        'limit': 25000,
+        'itype': 'ipv4',
+    },
+}
+
 logger = logging.getLogger(__name__)
 
 
 def _search(cli, args, options, filters):
+    fmt = options.get('format')
+    pprint(args)
+    if args.profile:
+        for k,v in PROFILES[args.profile].items():
+            if k == 'format':
+                fmt = v
+            else:
+                filters[k] = v
+
     try:
         rv = cli.search(filters)
 
@@ -33,7 +89,7 @@ def _search(cli, args, options, filters):
         logger.error(e)
 
     else:
-        for l in FORMATS[options.get('format')](data=rv, cols=args.columns.split(',')):
+        for l in FORMATS[fmt](data=rv, cols=args.columns.split(',')):
             print(l)
 
     raise SystemExit
@@ -152,6 +208,8 @@ def main():
     p.add_argument('--no-feed', action='store_true')
 
     p.add_argument('--graph', help='dump the graph', action='store_true')
+
+    p.add_argument('--profile', help='specify feed profile', choices=PROFILES.keys())
 
     args = p.parse_args()
 
