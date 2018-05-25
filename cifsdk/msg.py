@@ -34,6 +34,7 @@ MAP = {
     8: 'tokens_delete',
     9: 'tokens_edit',
     10: 'graph_search',
+    11: 'stats_search',
 }
 
 
@@ -49,6 +50,7 @@ class Msg(object):
     TOKENS_DELETE = 8
     TOKENS_EDIT = 9
     GRAPH_SEARCH = 10
+    STATS_SEARCH = 11
 
     def __init__(self, *args, **kwargs):
         for k in kwargs:

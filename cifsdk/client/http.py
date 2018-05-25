@@ -264,6 +264,9 @@ class HTTP(Client):
     def graph_search(self, filters):
         return self._get('graph', params=filters)
 
+    def stats_search(self, filters={}):
+        return self._get('stats', params=filters)
+
     def indicators_search(self, filters):
         data = self._get('indicators', params=filters)
 

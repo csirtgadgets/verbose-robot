@@ -31,3 +31,7 @@ class Client(object):
     @abc.abstractmethod
     def indicators_search(self, data):
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def stats_search(self, data):
+        raise NotImplementedError

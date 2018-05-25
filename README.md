@@ -2,6 +2,8 @@
 **This is a PROTOTYPE AND MAY OR (PROBABLY) MAY NOT WORK**
 *We GLADLY ACCEPT PULL REQUESTS*
 
+* Get a producer credit in the README by taking
+
 # Design Goals
 
 * Performance (Leaner, Faster).

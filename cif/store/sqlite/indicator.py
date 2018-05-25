@@ -8,7 +8,7 @@ import logging
 import time
 from pprint import pprint
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index
+from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index, func
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -555,6 +555,20 @@ class IndicatorManager(IndicatorManagerPlugin):
 
     def search_graph(self, token, data, **kwargs):
         rv = json_graph.node_link_data(self.graph)
+
+        return rv
+
+    def stats_search(self, token, data, **kwargs):
+        limit = data.get('limit', 25)
+        s = self.handle()
+
+        s = s.query(getattr(Indicator, data['q']), func.count(getattr(Indicator, data['q'])))
+        s = s.group_by(getattr(Indicator, data['q']))
+        s = s.limit(limit)
+
+        rv = []
+        for rr in s:
+            rv.append({data['q']: rr[0], 'count': rr[1]})
 
         return rv
 

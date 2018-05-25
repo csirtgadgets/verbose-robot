@@ -189,6 +189,9 @@ class ZMQ(Client):
     def graph_search(self, filters, decode=True):
         return self._send(Msg.GRAPH_SEARCH, json.dumps(filters), decode=decode)
 
+    def stats_search(self, filters, decode=True):
+        return self._send(Msg.STATS_SEARCH, json.dumps(filters), decode=decode)
+
     def indicators_create(self, data, nowait=False, fireball=False):
         if isinstance(data, dict):
             data = self._kv_to_indicator(data)

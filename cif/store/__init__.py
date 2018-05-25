@@ -379,6 +379,21 @@ class Store(multiprocessing.Process):
 
         return x
 
+    def handle_stats_search(self, token, data, **kwargs):
+        t = self.store.tokens.read(token)
+        try:
+            x = self.store.indicators.stats_search(t, data)
+        except Exception as e:
+            logger.error(e)
+
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                import traceback
+                traceback.print_exc()
+
+            raise InvalidSearch('invalid search')
+
+        return x
+
     def handle_indicators_delete(self, token, data=None, id=None, client_id=None):
         t = self.store.tokens.admin(token)
         return self.store.indicators.delete(t, data=data, id=id)
