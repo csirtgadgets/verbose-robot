@@ -17,7 +17,9 @@ networkx
 
 csirtg_dnsdb==0.0.0a4
 
-tornado>=4.4.1,<5.0
+# 5.x requires lxml updates
+tornado==4.5.3
+
 gevent
 flask-sockets
 websocket-client>=0.44,<1
@@ -25,6 +27,6 @@ websocket-client>=0.44,<1
 lxml<4.0
 pyyaml
 
-https://github.com/csirtgadgets/silver-meme/archive/master.zip
-https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
+csirtg_indicator>=2.0a2
+csirtg_fm>=1.0a1
 

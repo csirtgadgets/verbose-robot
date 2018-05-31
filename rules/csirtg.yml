@@ -19,7 +19,7 @@ feeds:
 
   # A feed of email addresses seen in UCE email. Do not alert or block on these
   # email addresses without additional post-processing.
-  csirtgadgets/uce-email-address:
+  csirtgadgets/uce-email-addresses:
     defaults:
       tags:
         - uce

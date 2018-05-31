@@ -238,6 +238,7 @@ class IndicatorList(Resource):
 
     @api.doc('create_indicator(s)')
     @api.param('nowait', 'Submit but do not wait for a response')
+    @api.response(201, 'success', model='Envelope')
     def post(self):
         """Create an Indicator"""
         if len(request.data) == 0:
@@ -247,6 +248,8 @@ class IndicatorList(Resource):
         nowait = request.args.get('nowait', False)
 
         if request.headers.get('Content-Length'):
+
+            logger.debug('size: %0.2f kb' % (float(request.headers['Content-Length']) / 1024))
             if int(request.headers['Content-Length']) > 5000:
                 fireball = True
         try:

@@ -2,9 +2,11 @@ import logging
 import os
 import geoip2.database
 import re
-from csirtg_indicator import Indicator
 from pprint import pprint
 import sys
+from geoip2.errors import AddressNotFoundError
+
+from csirtg_indicator import Indicator
 from cifsdk.utils.network import resolve_fqdn, resolve_url
 
 # more local first, see search path loop
@@ -49,7 +51,11 @@ def _resolve(indicator):
         if not indicator.rdata:
             indicator.rdata = i
 
-    g = CITY_DB.city(i)
+    try:
+        g = CITY_DB.city(i)
+    except AddressNotFoundError as e:
+        logger.info(e)
+        return
 
     if g.country.iso_code:
         indicator.cc = g.country.iso_code
@@ -74,7 +80,11 @@ def _resolve(indicator):
     except Exception:
         pass
 
-    g = ASN_DB.asn(i)
+    try:
+        g = ASN_DB.asn(i)
+    except AddressNotFoundError as e:
+        logger.info(e)
+        return
 
     if not g:
         return
