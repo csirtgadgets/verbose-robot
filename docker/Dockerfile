@@ -36,12 +36,14 @@ RUN rm -rf /tmp/verbose-robot
 
 RUN useradd cif
 
-VOLUME /etc/cif/rules
+VOLUME /etc/cif/rules/default
 VOLUME /var/lib/cif
 VOLUME /var/lib/fm
 VOLUME /var/log/cif
 
-COPY rules/* /etc/cif/rules/
+#COPY rules/* /etc/cif/rules/default/
+COPY rules/dataplane.yml /etc/cif/rules/default/
+COPY rules/openphish.yml /etc/cif/rules/default/
 
 WORKDIR /home/cif
 
