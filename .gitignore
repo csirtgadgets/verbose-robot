@@ -1,3 +1,6 @@
+.pytest_cache/
+*.gexf
+*.gpickle
 .DS_Store
 cif-ansible-role/*
 deploymentkit/*
