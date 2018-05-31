@@ -25,6 +25,7 @@ from .ping import api as ping_api
 from .tokens import api as tokens_api
 from .health import api as health_api
 from .stats import api as stats_api
+from .predict import api as predict_api
 from .graph import api as graph_api
 
 STREAM_ADDR = os.getenv('CIF_STREAM_ADDR', 'tcp://127.0.0.1:5001')
@@ -68,6 +69,7 @@ APIS = [
     tokens_api,
     health_api,
     stats_api,
+    predict_api
     #graph_api
 ]
 
