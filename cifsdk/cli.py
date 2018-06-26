@@ -66,7 +66,6 @@ logger = logging.getLogger(__name__)
 
 def _search(cli, args, options, filters):
     fmt = options.get('format')
-    pprint(args)
     if args.profile:
         for k,v in PROFILES[args.profile].items():
             if k == 'format':
@@ -89,8 +88,8 @@ def _search(cli, args, options, filters):
         logger.error(e)
 
     else:
-        for l in FORMATS[fmt](data=rv, cols=args.columns.split(',')):
-            print(l)
+        for l in FORMATS[fmt](data=rv):
+            print(l.rstrip("\n"))
 
     raise SystemExit
 
