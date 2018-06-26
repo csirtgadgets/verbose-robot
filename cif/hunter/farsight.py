@@ -55,9 +55,9 @@ def process(i):
                 count=r['count'],
                 tags='pdns',
                 confidence=4,
-                firsttime=first,
-                lasttime=last,
-                reporttime=reporttime,
+                first_at=first,
+                last_at=last,
+                reported_at=reporttime,
                 provider=PROVIDER,
                 tlp='amber',
                 group='everyone'

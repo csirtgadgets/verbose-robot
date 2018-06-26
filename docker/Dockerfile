@@ -11,7 +11,8 @@ COPY docker/supervisord.conf /usr/local/etc/supervisord.conf
 RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections
 
 RUN apt-get update
-RUN apt-get install -y geoipupdate python3-dev python3-pip python-setuptools python-pip build-essential git sudo resolvconf curl
+RUN apt-get install -y geoipupdate python3-dev python3-pip python-setuptools python-pip build-essential git sudo \
+    resolvconf curl vim mlocate
 RUN pip3 install pip --upgrade
 
 RUN geoipupdate -v
@@ -47,5 +48,4 @@ COPY rules/openphish.yml /etc/cif/rules/default/
 
 WORKDIR /home/cif
 
-#ENTRYPOINT ["python3"]
 ENTRYPOINT ["/entrypoint", "-n"]

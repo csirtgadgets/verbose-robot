@@ -685,7 +685,15 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         logger.debug('committing')
         start = time.time()
-        s.commit()
+
+        try:
+            s.commit()
+        except Exception as e:
+            n = 0
+            logger.error(e)
+            logger.debug('rolling back transaction..')
+            s.rollback()
+
         nx.write_gpickle(self.graph, GRAPH_PATH)
         nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
         logger.debug('done: %0.2f' % (time.time() - start))

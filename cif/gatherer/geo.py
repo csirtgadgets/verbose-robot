@@ -14,12 +14,14 @@ DB_SEARCH_PATHS = [
     '/usr/share/GeoIP',
     '/usr/local/share/GeoIP',
     '/usr/local/var/GeoIP',
+    '/var/lib/GeoIP'
     './',
 ]
 
 ENABLE_FQDN = os.getenv('CIF_GATHERER_GEO_FQDN')
 CITY_DB_PATH = 'GeoLite2-City.mmdb'
 ASN_DB_PATH = 'GeoLite2-ASN.mmdb'
+CITY_DB = False
 
 logger = logging.getLogger('cif.gatherer')
 

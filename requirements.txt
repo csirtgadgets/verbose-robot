@@ -28,5 +28,5 @@ lxml<4.0
 pyyaml
 
 csirtg_indicator>=2.0a2
-csirtg_fm>=1.0a1
+csirtg_fm>=1.0a3
 

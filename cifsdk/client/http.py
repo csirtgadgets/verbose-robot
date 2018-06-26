@@ -271,14 +271,14 @@ class HTTP(Client):
         data = self._get('indicators', params=filters)
 
         # indicator v0 work-around
-        for i in data:
-            i['reporttime'] = i.get('reported_at')
-            i['firsttime'] = i.get('first_at')
-            i['lasttime'] = i.get('last_at')
-
-            del i['reported_at']
-            del i['first_at']
-            del i['last_at']
+        # for i in data:
+        #     i['reporttime'] = i.get('reported_at')
+        #     i['firsttime'] = i.get('first_at')
+        #     i['lasttime'] = i.get('last_at')
+        #
+        #     del i['reported_at']
+        #     del i['first_at']
+        #     del i['last_at']
 
         return data
 
@@ -292,18 +292,18 @@ class HTTP(Client):
         if isinstance(data, list) and isinstance(data[0], Indicator):
             data = [i.__dict__() for i in data]
 
-        for i in data:
-            if i == 'reporttime':
-                data['reported_at'] = data[i]
-                del data['reporttime']
-
-            if i == 'lasttime':
-                data['lasttime'] = data[i]
-                del data['lasttime']
-
-            if i == 'firsttime':
-                data['first_at'] = data[i]
-                del data['firsttime']
+        # for i in data:
+        #     if i == 'reporttime':
+        #         data['reported_at'] = data[i]
+        #         del data['reporttime']
+        #
+        #     if i == 'lasttime':
+        #         data['lasttime'] = data[i]
+        #         del data['lasttime']
+        #
+        #     if i == 'firsttime':
+        #         data['first_at'] = data[i]
+        #         del data['firsttime']
 
         rv = self._post('indicators', data)
         return rv["data"]
