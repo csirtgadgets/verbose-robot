@@ -30,3 +30,5 @@ pyyaml
 csirtg_indicator>=2.0a2
 csirtg_fm>=1.0a3
 
+#cifsdk>=4.0,<5.0
+https://github.com/csirtgadgets/verbose-robot-sdk-py/archive/master.zip
