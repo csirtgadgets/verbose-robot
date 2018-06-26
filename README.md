@@ -10,6 +10,7 @@ $ export CIF_TOKEN=`head -n 25000 /dev/urandom | openssl dgst -sha256`
 $ docker run -e CIF_TOKEN="${CIF_TOKEN}" -it -d -p 5000:5000 --name verbose-robot csirtgadgets/verbose-robot
 $ docker exec -it verbose-robot /bin/bash
 $ cif -d -p
+$ env | grep CIF_TOKEN
 ```
 
 # Need More Advanced Help?
