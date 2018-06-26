@@ -1,10 +1,8 @@
 # Getting Started
 
-**This is a PROTOTYPE AND MAY OR (PROBABLY) MAY NOT WORK**
-*We GLADLY ACCEPT PULL REQUESTS*
+**THIS IS A TECHNICAL PREVIEW, MANY THINGS MAY NOT WORK CORRECTLY**
 
-Take credit for your work!
-
+*We GLADLY ACCEPT PULL REQUESTS- GET CREDIT FOR YOUR WORK!*
 
 ```
 $ docker pull csirtgadgets/verbose-robot
