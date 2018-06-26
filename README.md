@@ -17,9 +17,10 @@ $ env | grep CIF_TOKEN
 
 https://csirtg.io/support
 
- * Augment your developer cycles, spend less time on customization
- * Influence over future features at a fraction of the cost of custom building
- * Lessons learned from 10+ years of industry wide experience
+ * Augment your developer cycles, spend less time on customization.
+ * Influence over future features at a fraction of the cost of custom building.
+ * Lessons learned from 10+ years of industry wide experience.
+ * Solve problems faster.
 
 # Design Goals
 
