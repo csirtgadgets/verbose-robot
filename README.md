@@ -17,9 +17,7 @@ $ env | grep CIF_TOKEN
 
 https://csirtg.io/support
 
- * Spend less time on features, fixes and customization
- * Augment your developer cycles with our expertise
- * No sales calls or up-sells
+ * Augment your developer cycles, spend less time on customization
  * Influence over future features at a fraction of the cost of custom building
  * Lessons learned from 10+ years of industry wide experience
 
