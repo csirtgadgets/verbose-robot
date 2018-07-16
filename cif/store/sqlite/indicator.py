@@ -505,7 +505,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             s.add(ipv4)
 
         elif i.itype == 'ipv6':
-            match = re.search('^(\S+)\/(\d+)$', i.itype)  # TODO -- use ipaddress
+            match = re.search('^([\S|:]+)\/(\d+)$', i.indicator)  # TODO -- use ipaddress
             if match:
                 ip = Ipv6(ip=match.group(1), mask=match.group(2), indicator=i)
             else:
@@ -710,7 +710,7 @@ class IndicatorManager(IndicatorManagerPlugin):
                 if logger.getEffectiveLevel() == logging.DEBUG:
                     import traceback
                     traceback.print_exc()
-                
+
                 n -= 1
                 logger.error(e)
                 logger.debug('Rolling back individual transaction..')
