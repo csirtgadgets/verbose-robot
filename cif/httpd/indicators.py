@@ -220,7 +220,7 @@ class IndicatorList(Resource):
         else:
             feed = list(f(
                 self._pull_feed(filters),
-                #self._pull_whitelist(filters)
+                self._pull_whitelist(filters)
             ))
 
         feed = aggregate(feed)
