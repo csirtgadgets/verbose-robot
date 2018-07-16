@@ -155,7 +155,7 @@ class IndicatorList(Resource):
 
         return self._pull(filters)
 
-    def _pull_whitelist(self, filters):
+    def _pull_whitelist(self, filters={}):
         wl_filters = copy.deepcopy(filters)
 
         # whitelists are typically updated 1/month so we should catch those
@@ -220,7 +220,7 @@ class IndicatorList(Resource):
         else:
             feed = list(f(
                 self._pull_feed(filters),
-                self._pull_whitelist(filters)
+                #self._pull_whitelist(filters)
             ))
 
         feed = aggregate(feed)
