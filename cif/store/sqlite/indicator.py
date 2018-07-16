@@ -535,8 +535,6 @@ class IndicatorManager(IndicatorManagerPlugin):
             g.add_node(t)
             g.add_edge(i['indicator'], t)
 
-        pprint(i)
-
         reported_at = arrow.get(i['reported_at'])
         reported_at = '{}'.format(reported_at.format('YYYY-MM-DD'))
         g.add_node(reported_at)
@@ -709,6 +707,10 @@ class IndicatorManager(IndicatorManagerPlugin):
                 logger.debug('Committing individual indicator')
                 s.commit()
             except Exception as e:
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    import traceback
+                    traceback.print_exc()
+                
                 n -= 1
                 logger.error(e)
                 logger.debug('Rolling back individual transaction..')
