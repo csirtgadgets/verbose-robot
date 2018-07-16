@@ -1,16 +1,13 @@
 defaults:
-  provider: spamhaus.org
-  confidence: 4
-  tlp: green
-  reference_tlp: white
   tags:
     - hijacked
-  reference: http://www.spamhaus.org/sbl/sbl.lasso?query=<reference>
-  pattern: '(.+)\s;\s(.+)'
+  confidence: 4
+  reference: http://www.spamhaus.org/sbl/sbl.lasso?query={description}
+  last_at: 'day'
+  provider: spamhaus.org
   values:
     - indicator
-    - reference
-  last_at: 'month'
+    - description
 
 feeds:
   drop:
@@ -22,9 +19,7 @@ feeds:
   dropv6:
     remote: https://www.spamhaus.org/drop/dropv6.txt
 
-  # https://github.com/csirtgadgets/csirtg-smrt-py/issues/230
   asndrop:
-    parser: pattern
     remote: https://www.spamhaus.org/drop/asndrop.txt
     pattern: '^(\S+) ; ([\S+]{2}) \| ([^\n]+)$'
     values:
