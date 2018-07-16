@@ -531,7 +531,7 @@ class IndicatorManager(IndicatorManagerPlugin):
         g = self.graph
 
         g.add_node(i['indicator'], itype=i['itype'])
-        for t in i.get('tags'):
+        for t in i.get('tags', []):
             g.add_node(t)
             g.add_edge(i['indicator'], t)
 
@@ -574,93 +574,97 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         return rv
 
-    def upsert(self, token, data, **kwargs):
-        if type(data) == dict:
-            data = [data]
+    def _normalize_tags(self, i):
+        tags = i.get("tags", [])
+        if len(tags) == 0:
+            return tags
 
-        s = self.handle()
+        if isinstance(tags, basestring):
+            tags = tags.split(',')
 
-        n = 0
-        cached_added = {}
+        del i['tags']
 
-        for d in data:
+        return tags
 
-            tags = d.get("tags", [])
+    def _upsert_filter(self, s, d, tags):
+        # setup query
+        i = s.query(Indicator).options(lazyload('*')).filter_by(
+            provider=d['provider'],
+            itype=d['itype'],
+            indicator=d['indicator'],
+        ).order_by(Indicator.last_at.desc())
 
-            self._insert_graph(d)
+        if d.get('rdata'):
+            i = i.filter_by(rdata=d['rdata'])
 
-            if len(tags) > 0:
-                if isinstance(tags, basestring):
-                    tags = tags.split(',')
+        if d['itype'] == 'ipv4':
+            match = re.search('^(\S+)\/(\d+)$', d['indicator'])  # TODO -- use ipaddress
+            if match:
+                i = i.join(Ipv4).filter(Ipv4.ipv4 == match.group(1), Ipv4.mask == match.group(2))
+            else:
+                i = i.join(Ipv4).filter(Ipv4.ipv4 == d['indicator'])
 
-                del d['tags']
+        elif d['itype'] == 'ipv6':
+            match = re.search('^(\S+)\/(\d+)$', d['indicator'])  # TODO -- use ipaddress
+            if match:
+                i = i.join(Ipv6).filter(Ipv6.ip == match.group(1), Ipv6.mask == match.group(2))
+            else:
+                i = i.join(Ipv6).filter(Ipv6.ip == d['indicator'])
 
-            i = s.query(Indicator).options(lazyload('*')).filter_by(
-                provider=d['provider'],
-                itype=d['itype'],
-                indicator=d['indicator'],
-            ).order_by(Indicator.last_at.desc())
+        elif d['itype'] == 'fqdn':
+            i = i.join(Fqdn).filter(Fqdn.fqdn == d['indicator'])
 
-            if d.get('rdata'):
-                i = i.filter_by(rdata=d['rdata'])
+        elif d['itype'] == 'url':
+            i = i.join(Url).filter(Url.url == d['indicator'])
 
-            if d['itype'] == 'ipv4':
-                match = re.search('^(\S+)\/(\d+)$', d['indicator'])  # TODO -- use ipaddress
-                if match:
-                    i = i.join(Ipv4).filter(Ipv4.ipv4 == match.group(1), Ipv4.mask == match.group(2))
-                else:
-                    i = i.join(Ipv4).filter(Ipv4.ipv4 == d['indicator'])
+        elif d['itype'] in HASH_TYPES:
+            i = i.join(Hash).filter(Hash.hash == d['indicator'])
 
-            elif d['itype'] == 'ipv6':
-                match = re.search('^(\S+)\/(\d+)$', d['indicator'])  # TODO -- use ipaddress
-                if match:
-                    i = i.join(Ipv6).filter(Ipv6.ip == match.group(1), Ipv6.mask == match.group(2))
-                else:
-                    i = i.join(Ipv6).filter(Ipv6.ip == d['indicator'])
+        if len(tags):
+            i = i.join(Tag).filter(Tag.tag == tags[0])
 
-            elif d['itype'] == 'fqdn':
-                i = i.join(Fqdn).filter(Fqdn.fqdn == d['indicator'])
+        return i
 
-            elif d['itype'] == 'url':
-                i = i.join(Url).filter(Url.url == d['indicator'])
-
-            elif d['itype'] in HASH_TYPES:
-                i = i.join(Hash).filter(Hash.hash == d['indicator'])
-
-            if len(tags):
-                i = i.join(Tag).filter(Tag.tag == tags[0])
-
-            r = i.first()
-            if r and not isinstance(r, Indicator):
-                r = r.get(i.indicator_id)
-
-            # if the record exists..
-            if r and d.get('last_at') and arrow.get(d.get('last_at')).datetime <= arrow.get(r.last_at).datetime:
-                logger.debug('skipping: %s' % d['indicator'])
-                continue
-
-            if r:
-                r.count += 1
-                if not d.get('last_at'):
-                    d['last_at'] = arrow.utcnow()
-                r.last_at = arrow.get(d['last_at']).datetime.replace(tzinfo=None)
-
-                r.reported_at = d.get('reported_at', arrow.utcnow().datetime)
-                r.reported_at = arrow.get(r.reported_at).datetime.replace(tzinfo=None)
-
-                if d.get('message'):
-                    m = Message(message=d['message'], indicator=r)
-                    s.add(m)
-
-                n += 1
-
-                continue
-
+    def _upsert(self, s, n, d, token, cached_added, batch):
+        try:
             # check to see if it's been added in the cache
             if cached_added.get(d['indicator']):
                 if d.get('last_at') in cached_added[d['indicator']]:
                     logger.debug('skipping: %s' % d['indicator'])
-                    continue
+                    n -= 1
+                    return n
+
+            self._insert_graph(d)
+
+            tags = self._normalize_tags(d)
+
+            i = self._upsert_filter(s, d, tags)
+
+            # get first indicator
+            r = i.first()
+            if r and not isinstance(r, Indicator):
+                r = r.get(i.indicator_id)
+
+            # if the record exists.. and if it's newer, skip
+            if r:
+                if d.get('last_at') and arrow.get(d.get('last_at')).datetime <= arrow.get(r.last_at).datetime:
+                    logger.debug('skipping: %s' % d['indicator'])
+                else:
+                    r.count += 1
+                    if not d.get('last_at'):
+                        d['last_at'] = arrow.utcnow()
+
+                    r.last_at = arrow.get(d['last_at']).datetime.replace(tzinfo=None)
+
+                    r.reported_at = d.get('reported_at', arrow.utcnow().datetime)
+                    r.reported_at = arrow.get(r.reported_at).datetime.replace(tzinfo=None)
+
+                    if d.get('message'):
+                        m = Message(message=d['message'], indicator=r)
+                        s.add(m)
+
+                n -= 1
+                return n
 
             # new record
             cached_added[d['indicator']] = set()
@@ -680,21 +684,72 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             self._upsert_itype(s, ii)
 
-            n += 1
             cached_added[d['indicator']].add(d['last_at'])
 
-        logger.debug('committing')
-        start = time.time()
-
-        try:
-            s.commit()
         except Exception as e:
+            logger.error(e)
+
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                import traceback
+                traceback.print_exc()
+
+            if batch:
+                logger.debug('Failing batch - passing exception to upper layer')
+                raise
+            else:
+                n -= 1
+                logger.debug('Rolling back individual transaction..')
+                s.rollback()
+
+        # When this function is called in non-batch mode, we need to commit each individual indicator at this point.
+        # For batches, the commit happens at a higher layer.
+
+        if not batch:
+            try:
+                logger.debug('Committing individual indicator')
+                s.commit()
+            except Exception as e:
+                n -= 1
+                logger.error(e)
+                logger.debug('Rolling back individual transaction..')
+                s.rollback()
+
+        return n
+
+    def upsert(self, token, data, **kwargs):
+        if isinstance(data, dict):
+            data = [data]
+
+        s = self.handle()
+
+        n = 0
+        cached_added = {}
+
+        s1 = time.time()
+        try:
+            for d in data:
+               n = self._upsert(s, n, d, token, cached_added, True)
+
+            logger.debug('committing entire batch')
+            s2 = time.time()
+            s.commit()
+            logger.debug('done: %0.2f' % (time.time() - s2))
+
+        except Exception as e:
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                import traceback
+                traceback.print_exc()
+
             n = 0
+            cached_added = {}
             logger.error(e)
             logger.debug('rolling back transaction..')
             s.rollback()
+            logger.debug('Trying batch again in non-batch mode')
+            for d in data:
+                n = self._upsert(s, n, d, token, cached_added, False)
 
         nx.write_gpickle(self.graph, GRAPH_PATH)
         nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
-        logger.debug('done: %0.2f' % (time.time() - start))
+        logger.debug('done: %0.2f' % (time.time() - s1))
         return n
