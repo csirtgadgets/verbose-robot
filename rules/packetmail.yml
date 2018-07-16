@@ -1,6 +1,6 @@
 
 defaults:
-  tags: scanner, honeynet, suspicious
+  tags: scanner, honeynet
 
 feeds:
   iprep:

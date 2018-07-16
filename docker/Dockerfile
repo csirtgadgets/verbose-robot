@@ -45,6 +45,11 @@ VOLUME /var/log/cif
 #COPY rules/* /etc/cif/rules/default/
 COPY rules/dataplane.yml /etc/cif/rules/default/
 COPY rules/openphish.yml /etc/cif/rules/default/
+COPY rules/abuse_ch.yml /etc/cif/rules/default/
+COPY rules/emerging_threats.yml /etc/cif/rules/default/
+COPY rules/packetmail.yml /etc/cif/rules/default/
+COPY rules/spamhaus.yml /etc/cif/rules/default/
+copy rules/sans_edu.yml /etc/cif/rules/default/
 
 WORKDIR /home/cif
 

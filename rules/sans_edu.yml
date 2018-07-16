@@ -6,7 +6,6 @@ defaults:
   pattern:  '^(.+)$'
   values: indicator
   tags: suspicious
-  last_at: 'month'
 
 feeds:
   02_domains_low:
@@ -33,3 +32,4 @@ feeds:
       - indicator
       - mask
     tags: scanner
+    last_at: 'month'

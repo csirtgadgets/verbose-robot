@@ -1,0 +1,19 @@
+---
+feeds:
+  ransomeware:
+    remote: https://ransomwaretracker.abuse.ch/feeds/csv
+    defaults:
+      reference: 'https://ransomwaretracker.abuse.ch/host/{rdata}'
+      description: ransomeware
+      tags: ransomware, botnet
+    values:
+      - last_at
+      - null
+      - description
+      - rdata
+      - indicator
+      - null
+      - null
+      - null
+      - asn
+      - cc
