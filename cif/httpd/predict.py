@@ -1,6 +1,6 @@
 from flask_restplus import Namespace, Resource, reqparse, fields
-from csirtg_domainsml import predict as predict_domain
-from csirtg_urlsml import predict as predict_url
+from csirtg_domainsml_tf import predict as predict_domain
+from csirtg_urlsml_tf import predict as predict_url
 #from .whitelist import lookup as is_whitelisted
 from csirtg_indicator.utils import resolve_itype
 
@@ -40,5 +40,7 @@ class Predict(Resource):
                 p = predict_url(args.q)
             else:
                 p = 0
+
+            p = str(round((p[0][0] * 100), 2))
 
         return {'data': str(p)}
