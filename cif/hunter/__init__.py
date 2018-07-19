@@ -25,6 +25,8 @@ HUNTER_ADVANCED = os.getenv('CIF_HUNTER_ADVANCED', 0)
 
 TRACE = os.environ.get('CIF_HUNTER_TRACE', False)
 
+TOKEN = os.getenv('CIF_HUNTER_TOKEN')
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -39,7 +41,7 @@ class Hunter(multiprocessing.Process):
     def __exit__(self, type, value, traceback):
         return self
 
-    def __init__(self, token=None):
+    def __init__(self, token=TOKEN):
         multiprocessing.Process.__init__(self)
         self.token = token
         self.exit = multiprocessing.Event()
