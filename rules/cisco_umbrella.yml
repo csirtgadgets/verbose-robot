@@ -1,26 +1,17 @@
 defaults:
-  description: 'eval("cisco umbrella #{rank}".format(**obs))'
+  description: 'cisco umbrella'
   tags: whitelist
-  altid: 'http://s3-us-west-1.amazonaws.com/umbrella-static/index.html'
+  reference: 'http://s3-us-west-1.amazonaws.com/umbrella-static/index.html'
   provider: umbrella.cisco.com
-  tlp: green
-  altid_tlp: white
-  last_at: 'month'
+  last_at: 'day'
+  pattern: '^(\d+),(\S{4,})$'
   values:
     - rank
     - indicator
   confidence: 4
-  #confidence: |
-  #  eval(max(0, min(
-  #      12.5 - 2.5 * math.ceil(
-  #          math.log10(
-  #              int(obs['rank'])
-  #          )
-  #      ),
-  #  4)))
+  goback: 30
 
 feeds:
   top-1000:
     remote: http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip
-    pattern: '^(\d+),(\S{4,})$'
     limit: 1000
