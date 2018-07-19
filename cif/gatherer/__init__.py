@@ -8,6 +8,9 @@ import multiprocessing
 import os
 from pprint import pprint
 
+from csirtg_urlsml_tf import predict as predict_url
+from csirtg_domainsml_tf import predict as predict_fqdn
+
 from csirtg_indicator import Indicator
 from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
 from cifsdk.msg import Msg
@@ -18,6 +21,8 @@ import cif.gatherer
 SNDTIMEO = 30000
 LINGER = 0
 TRACE = os.environ.get('CIF_GATHERER_TRACE')
+
+PREDICT = os.getenv('CIF_GATHERER_PREDICT', '0')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
@@ -44,6 +49,28 @@ class Gatherer(multiprocessing.Process):
     def terminate(self):
         self.exit.set()
 
+    def predict_urls(self, indicators):
+        indicators = list(indicators)
+        urls = [(i.indicator, idx) for idx, i in enumerate(indicators) if i.itype == 'url' and not i.probability]
+
+        predict = predict_url([u[0] for u in urls])
+
+        for idx, u in enumerate(urls):
+            indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
+
+        return indicators
+
+    def predict_fqdns(self, indicators):
+        indicators = list(indicators)
+        urls = [(i.indicator, idx) for idx, i in enumerate(indicators) if i.itype == 'fqdn' and not i.probability]
+
+        predict = predict_fqdn([u[0] for u in urls])
+
+        for idx, u in enumerate(urls):
+            indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
+
+        return indicators
+
     def process(self, data):
         if isinstance(data, dict):
             data = [data]
@@ -60,6 +87,10 @@ class Gatherer(multiprocessing.Process):
                     logger.error('gatherer failed: %s' % g)
                     logger.error(e)
                     traceback.print_exc()
+
+        if PREDICT == '1':
+            indicators = self.predict_urls(indicators)
+            indicators = self.predict_fqdns(indicators)
 
         return [i.__dict__() for i in indicators]
 
