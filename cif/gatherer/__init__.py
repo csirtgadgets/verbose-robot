@@ -22,7 +22,7 @@ SNDTIMEO = 30000
 LINGER = 0
 TRACE = os.environ.get('CIF_GATHERER_TRACE')
 
-PREDICT = os.getenv('CIF_GATHERER_PREDICT', '0')
+PREDICT = os.getenv('CIF_GATHERER_PREDICT', '1')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
