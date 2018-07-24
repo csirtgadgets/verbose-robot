@@ -1,0 +1,7 @@
+---
+feeds:
+  urls:
+    remote: http://vxvault.net/URL_List.php
+    defaults:
+      description: suspicious
+      tags: malware

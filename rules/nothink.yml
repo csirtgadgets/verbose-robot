@@ -1,0 +1,6 @@
+---
+feeds:
+  ssh:
+    remote: http://www.nothink.org/blacklist/blacklist_ssh_day.txt
+    defaults:
+      tags: scanner, bruteforce, ssh

@@ -1,0 +1,21 @@
+---
+# https://www.phishtank.com/developer_info.php
+# remote: http://data.phishtank.com/data/<api-token>/online-valid.json.gz
+token:
+remote: http://data.phishtank.com/data/{token}/online-valid.json.gz
+
+feeds:
+  urls:
+    itype: url
+    map:
+      - submission_time
+      - url
+      - target
+      - phish_detail_url
+      - details
+    values:
+      - lasttime
+      - indicator
+      - description
+      - altid
+      - additional_data
