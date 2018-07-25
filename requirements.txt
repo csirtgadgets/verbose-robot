@@ -30,7 +30,9 @@ pyyaml
 csirtg_indicator>=2.0a3,<3.0
 csirtg-urlsml-tf
 csirtg-domainsml-tf
-csirtg_fm>=1.0a5
+#csirtg_fm>=1.0a5
+https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
+
 
 #cifsdk>=4.0,<5.0
 https://github.com/csirtgadgets/verbose-robot-sdk-py/archive/master.zip

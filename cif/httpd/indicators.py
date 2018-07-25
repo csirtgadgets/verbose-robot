@@ -121,31 +121,32 @@ class IndicatorList(Resource):
             else:
                 filters['days'] = str(FEED_DAYS[filters['itype']])
 
-        if filters.get('days'):
-            if re.match(r'^\d+$', filters['days']):
-                now = arrow.utcnow()
-                end = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-                now = now.replace(days=-int(filters['days']))
-                start = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-                filters['reported_at'] = '%s,%s' % (start, end)
-            del filters['days']
+        if not filters.get('reported_at'):
+            if filters.get('days'):
+                if re.match(r'^\d+$', filters['days']):
+                    now = arrow.utcnow()
+                    end = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+                    now = now.replace(days=-int(filters['days']))
+                    start = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+                    filters['reported_at'] = '%s,%s' % (start, end)
+                del filters['days']
 
-        if filters.get('hours'):
-            if re.match(r'^\d+$', filters['hours']):
-                now = arrow.utcnow()
-                end = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-                now = now.replace(hours=-int(filters['hours']))
-                start = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
-                filters['reported_at'] = '%s,%s' % (start, end)
-            del filters['hours']
+            if filters.get('hours'):
+                if re.match(r'^\d+$', filters['hours']):
+                    now = arrow.utcnow()
+                    end = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+                    now = now.replace(hours=-int(filters['hours']))
+                    start = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+                    filters['reported_at'] = '%s,%s' % (start, end)
+                del filters['hours']
 
-        if filters.get('today'):
-            if filters['today'] == '1':
-                now = arrow.utcnow()
-                start = '{0}Z'.format(now.format('YYYY-MM-DDT00:00:00'))
-                end = '{0}Z'.format(now.format('YYYY-MM-DDT23:59:59'))
-                filters['reported_at'] = '%s,%s' % (start, end)
-            del filters['today']
+            if filters.get('today'):
+                if filters['today'] == '1':
+                    now = arrow.utcnow()
+                    start = '{0}Z'.format(now.format('YYYY-MM-DDT00:00:00'))
+                    end = '{0}Z'.format(now.format('YYYY-MM-DDT23:59:59'))
+                    filters['reported_at'] = '%s,%s' % (start, end)
+                del filters['today']
 
         if not filters.get('limit'):
             filters['limit'] = FEEDS_LIMIT

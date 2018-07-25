@@ -24,3 +24,23 @@ feeds:
   csirtgadgets/uce-ip:
     defaults:
       tags: uce
+
+
+  # see https://csirtg.io/marketplace
+  # subscription based feeds
+
+  # csirtgadgets/correlated:
+  #  defaults:
+  #    tags: scanner
+  #    confidence: 4
+
+  # csirtgadgets/urls:
+  #  defaults:
+  #    tags: phishing
+  #    confidence: 4
+
+  # csirtgadgets/searches:
+  #  defaults:
+  #    tags: suspicious, search
+  #    confidence: 4
+  #    description: 'indicators csirtg.io users have searched for'

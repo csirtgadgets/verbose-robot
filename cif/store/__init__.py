@@ -349,6 +349,22 @@ class Store(multiprocessing.Process):
             except:
                 pass
 
+        # TODO - convert days to reported_at if doesn't exist
+        # tz,tz
+
+        # if not data.get('reporttime'):
+        #     if data.get('days'):
+        #         now = arrow.utcnow()
+        #         data['reporttimeend'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+        #         now = now.replace(days=-int(data['days']))
+        #         data['reporttime'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+        #
+        #     if data.get('hours'):
+        #         now = arrow.utcnow()
+        #         data['reporttimeend'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+        #         now = now.replace(hours=-int(data['hours']))
+        #         data['reporttime'] = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+
         self._log_search(t, data)
 
         try:

@@ -14,6 +14,5 @@ feeds:
 
   dga_domains_high:
     remote: http://osint.bambenekconsulting.com/feeds/dga-feed-high.csv.gz
-    cache: dga-feed-high.csv
     defaults:
       tags: dga, botnet
