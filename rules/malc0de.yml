@@ -1,32 +1,35 @@
-parser: rss
-remote: http://malc0de.com/rss/
+remote: http://malc0de.com/rss
 defaults:
-  confidence: 9
-  tlp: green
-  altid_tlp: white
-  provider: malc0de.com
   tags: malware
 
 feeds:
   urls:
     itype: url
-    pattern:
-      description:
+    defaults:
+      tags: malware
+
+    map:
+      summary:
         pattern: '^URL: (.+), IP Address: \S+?, Country: \S+, ASN: \S+, MD5: \S+'
         values:
           - indicator
+
       link:
         pattern: '(\S+)'
         values:
-          - altid
+          - reference
+
   malware:
-    itype: md5
-    pattern:
-      description:
+    defaults:
+      tags: malware
+
+    map:
+      summary:
         pattern: '^URL: .+, IP Address: \S+?, Country: \S+, ASN: \S+, MD5: (\S+)'
         values:
           - indicator
+
       link:
         pattern: '(\S+)'
         values:
-          - altid
+          - reference
