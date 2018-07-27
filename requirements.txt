@@ -30,7 +30,7 @@ pyyaml
 csirtg_indicator>=2.0a3,<3.0
 csirtg-urlsml-tf
 csirtg-domainsml-tf
-csirtg_fm>=1.0a6
+csirtg_fm>=1.0a7
 #https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
 
 
