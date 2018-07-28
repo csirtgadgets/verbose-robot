@@ -12,7 +12,7 @@ feeds:
       tags: botnet
       confidence: 3
 
-  dga_domains_high:
-    remote: http://osint.bambenekconsulting.com/feeds/dga-feed-high.csv.gz
-    defaults:
-      tags: dga, botnet
+  #dga_domains_high:
+  #  remote: http://osint.bambenekconsulting.com/feeds/dga-feed-high.csv.gz
+  #  defaults:
+  #    tags: dga, botnet

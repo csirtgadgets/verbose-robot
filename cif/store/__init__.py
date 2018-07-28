@@ -493,7 +493,7 @@ def main():
 
     if args.token_create_hunter:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            s._load_plugin(store_type=args.store, nodes=args.nodes)
+            #s._load_plugin(store_type=args.store, nodes=args.nodes)
             t = s.token_handler.token_create_hunter(token=args.token, groups=groups)
             if t:
                 if PYVERSION == 2:
