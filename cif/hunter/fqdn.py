@@ -24,6 +24,8 @@ def process(i):
     if i.itype != 'fqdn':
         return
 
+    print(i.indicator)
+
     try:
         r = resolve_ns(i.indicator)
         if not r:
@@ -58,7 +60,7 @@ def process(i):
         # also create a passive dns tag
         pdns.tags = 'pdns'
         pdns.confidence = 4
-        pdns.probability = i.probability
+        pdns.probability = 0
         pdns.indicator = ip.indicator
         pdns.rdata = i.indicator
         rv.append(pdns)

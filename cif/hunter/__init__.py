@@ -12,7 +12,7 @@ import os
 from cifsdk.client.zmq import ZMQ as Client
 from cif.constants import HUNTER_ADDR, HUNTER_SINK_ADDR
 from csirtg_indicator import Indicator
-from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser, load_plugins
+from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser, load_plugins, settings
 
 import cif.hunter
 
@@ -22,6 +22,10 @@ SNDTIMEO = 15000
 ZMQ_HWM = 1000000
 EXCLUDE = os.environ.get('CIF_HUNTER_EXCLUDE', None)
 HUNTER_ADVANCED = os.getenv('CIF_HUNTER_ADVANCED', 0)
+
+CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', 'router.yml')
+if not os.path.isfile(CONFIG_PATH):
+    CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', os.path.join(os.path.expanduser('~'), 'router.yml'))
 
 TRACE = os.environ.get('CIF_HUNTER_TRACE', False)
 
@@ -46,6 +50,13 @@ class Hunter(multiprocessing.Process):
         self.token = token
         self.exit = multiprocessing.Event()
         self.exclude = {}
+        self.settings = settings(CONFIG_PATH)
+        if not self.token:
+            if self.settings and self.settings.get('hunter_token'):
+                self.token = self.settings['hunter_token']
+            else:
+                logger.error('missing hunter token')
+                self.terminate()
 
         if EXCLUDE:
             for e in EXCLUDE.split(','):

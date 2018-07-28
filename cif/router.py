@@ -178,7 +178,6 @@ class Router(object):
 
         sleep(1)  # cleanup
 
-
     def start(self):
         logger.debug('starting loop')
 
@@ -266,7 +265,7 @@ class Router(object):
             if ROUTER_WEBHOOKS_ENABLED:
                 self.webhooks_s.send_string(s)
 
-            if self.hunters and d.get('confidence', 0) >= HUNTER_MIN_CONFIDENCE:
+            if self.hunters and int(d.get('confidence', 0)) >= HUNTER_MIN_CONFIDENCE:
                 self.hunters_s.send_string(s)
 
     def handle_indicators_search(self, id, mtype, token, data):
