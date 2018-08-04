@@ -13,7 +13,7 @@ maxminddb>=1.3,<1.4
 geoip2>=2.8,<2.9
 dnspython>=1.15.0,<1.16
 SQLAlchemy>=1.2,<1.3
-networkx
+networkx>=2.1
 
 csirtg_dnsdb==0.0.0a4
 
@@ -27,7 +27,7 @@ websocket-client>=0.44,<1
 lxml<4.0
 pyyaml
 
-csirtg_indicator>=2.0a3,<3.0
+csirtg_indicator>=2.0a4,<3.0
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg_fm>=1.0a7
