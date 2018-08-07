@@ -10,6 +10,10 @@ import zmq
 import re
 from pprint import pprint
 
+# https://github.com/gevent/gevent/issues/1016
+from gevent import monkey
+monkey.patch_all()
+
 from flask import Flask, request, _request_ctx_stack, session, make_response
 from flask_cors import CORS
 from flask_compress import Compress
@@ -69,7 +73,8 @@ APIS = [
     tokens_api,
     health_api,
     stats_api,
-    predict_api
+    predict_api,
+    #firehose_api,
     #graph_api
 ]
 
@@ -99,7 +104,6 @@ def pull_token():
 
     return t
 
-
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
 # need to thread this out in dev mode
 @sockets.route('/firehose')
@@ -111,28 +115,37 @@ def firehose(ws):
     from cifsdk.client.zmq import ZMQ as Client
     from cifsdk.constants import ROUTER_ADDR
     from cifsdk.exceptions import AuthError, TimeoutError
-    # check authorization
 
     t = pull_token()
 
+    # check authorization
     try:
         r = Client(ROUTER_ADDR, t).tokens_search(filters={'q': t})
+        if not r:
+            return api.abort(401)
     except TimeoutError:
         return api.abort(408)
 
     except AuthError:
         return api.abort(401)
 
-    if not r:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return api.abort(503)
 
     ctx = zmq.Context()
     router = ctx.socket(zmq.SUB)
+
+    logger.debug('connecting: %s' % STREAM_ADDR)
     router.connect(STREAM_ADDR)
+
+    router.setsockopt(zmq.SUBSCRIBE, b'')
 
     poller = zmq.Poller()
     poller.register(router, zmq.POLLIN)
 
+    ws.send("{'status': 'connected'}")
     while not ws.closed:
         try:
             s = dict(poller.poll(1000))
@@ -144,6 +157,11 @@ def firehose(ws):
 
         message = router.recv_multipart()
         ws.send(message[0])
+
+    print('done')
+    router.close()
+    del router
+
 
 @app.before_request
 def before_request():
@@ -179,7 +197,7 @@ def before_request():
 
 
 def main():
-    from gevent import pywsgi
+    from gevent import pywsgi, pool
     from geventwebsocket.handler import WebSocketHandler
 
     p = get_argument_parser()
@@ -222,9 +240,10 @@ def main():
         logger.info('pinging router...')
         logger.info('starting up...')
 
-        app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
-        # server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, handler_class=WebSocketHandler)
-        # server.serve_forever()
+        #app.run(host=HTTP_LISTEN, port=HTTP_LISTEN_PORT, debug=args.fdebug, threaded=True)
+        mypool = pool.Pool(500)
+        server = pywsgi.WSGIServer((HTTP_LISTEN, HTTP_LISTEN_PORT), app, spawn=mypool, handler_class=WebSocketHandler)
+        server.serve_forever()
 
     except KeyboardInterrupt:
         logger.info('shutting down...')

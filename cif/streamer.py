@@ -44,7 +44,10 @@ class Streamer(multiprocessing.Process):
         router = context.socket(zmq.PULL)
         publisher = context.socket(zmq.PUB)
 
+        logger.debug('binding: %s' % ROUTER_STREAM_ADDR_PUB)
         publisher.bind(ROUTER_STREAM_ADDR_PUB)
+
+        logger.debug('connecting: %s' % ROUTER_STREAM_ADDR)
         router.connect(ROUTER_STREAM_ADDR)
 
         poller = zmq.Poller()
@@ -61,15 +64,14 @@ class Streamer(multiprocessing.Process):
 
             data = router.recv_multipart()
 
-            logger.debug('got data..')
             logger.debug(data)
 
             logger.debug('sending..')
-            publisher.send_multipart(data)
-
-            data = json.loads(data[0])
+            for d in data:
+                publisher.send(d)
 
         context.term()
+        del router
 
 
 def main():
