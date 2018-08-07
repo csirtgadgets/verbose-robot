@@ -20,8 +20,9 @@ csirtg_dnsdb==0.0.0a4
 # 5.x requires lxml updates
 tornado==4.5.3
 
-gevent
-flask-sockets
+gunicorn>=19.9
+gevent>=1.2
+flask-sockets>=0.2
 websocket-client>=0.44,<1
 
 lxml<4.0
