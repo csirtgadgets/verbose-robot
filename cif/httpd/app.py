@@ -148,9 +148,22 @@ def firehose(ws):
     ws.send("{'status': 'connected'}")
     while not ws.closed:
         try:
-            s = dict(poller.poll(1000))
+            s = dict(poller.poll(5000))
         except KeyboardInterrupt or SystemExit:
             break
+
+        if ws.closed:
+            break
+
+        if len(s) == 0:
+            try:
+                ws.send('ping')
+            except Exception as e:
+                break
+
+            m = ws.receive()
+            if m != 'pong':
+                break
 
         if router not in s:
             continue
@@ -158,7 +171,7 @@ def firehose(ws):
         message = router.recv_multipart()
         ws.send(message[0])
 
-    print('done')
+    logger.debug('cleaning up ws client..')
     router.close()
     del router
 
