@@ -145,7 +145,7 @@ def firehose(ws):
     poller = zmq.Poller()
     poller.register(router, zmq.POLLIN)
 
-    ws.send("{'status': 'connected'}")
+    ws.send("connected")
     while not ws.closed:
         try:
             s = dict(poller.poll(5000))
