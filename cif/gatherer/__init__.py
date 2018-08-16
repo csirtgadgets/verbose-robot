@@ -75,7 +75,7 @@ class Gatherer(multiprocessing.Process):
         if isinstance(data, dict):
             data = [data]
 
-        indicators = [Indicator(**d) for d in data]
+        indicators = [Indicator(**d, geo=True) for d in data]
         for g in self.gatherers:
             for i in indicators:
                 try:

@@ -1,7 +1,7 @@
 import logging, os
 from csirtg_indicator import Indicator
 from csirtg_indicator.utils import is_ipv4_net
-from cifsdk.utils.network import resolve_ns
+from csirtg_indicator.utils.network import resolve_ns
 from pprint import pprint
 import arrow
 
