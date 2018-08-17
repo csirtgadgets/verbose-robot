@@ -6,7 +6,7 @@ import os
 
 from csirtg_indicator import Indicator
 
-from cifsdk.utils.network import resolve_ns
+from csirtg_indicator.utils.network import resolve_ns
 import os
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 

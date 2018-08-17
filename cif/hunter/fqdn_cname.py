@@ -3,7 +3,7 @@ from dns.resolver import Timeout
 import arrow
 
 from csirtg_indicator import resolve_itype
-from cifsdk.utils.network import resolve_ns
+from csirtg_indicator.utils.network import resolve_ns
 from csirtg_indicator import Indicator
 import os
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)

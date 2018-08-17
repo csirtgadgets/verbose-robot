@@ -7,7 +7,7 @@ from io import StringIO
 import csv
 
 from flask_restplus import Namespace, Resource, fields
-from flask import request, session, make_response
+from flask import request, session, make_response, current_app
 
 from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, HTTPD_FEED_WHITELIST_CONFIDENCE
 from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
@@ -204,6 +204,9 @@ class IndicatorList(Resource):
 
         if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
             return {'message': 'q OR tags|itype params required'}, 400
+
+        if current_app.config.get('dummy'):
+            return {'status': 'success', 'data': [{'indicator': filters['indicator']}]}
 
         if filters.get('indicator') or filters.get('no_feed', '0') == '1':
             if filters.get('no_feed'):

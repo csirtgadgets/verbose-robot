@@ -1,5 +1,5 @@
 from flask_restplus import Namespace, Resource, fields
-from flask import session
+from flask import session, current_app
 import time
 from cifsdk.client.zmq import ZMQ as Client
 
@@ -40,11 +40,15 @@ class Ping(Resource):
     @api.doc('get_ping')
     def get(self):
         """Ping the router, see if it's responding to requests and test READ access"""
+        if current_app.config.get('dummy'):
+            return {'status': 'success', 'data': time.time()}
 
         return self._ping()
 
     @api.doc('post_ping')
     def post(self):
         """Ping the router, test for WRITE access"""
+        if current_app.config.get('dummy'):
+            return {'status': 'success', 'data': time.time()}
 
         return self._ping(write=True)

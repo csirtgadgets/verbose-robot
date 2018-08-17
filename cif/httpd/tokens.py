@@ -1,5 +1,5 @@
 from flask_restplus import Namespace, Resource, fields, reqparse
-from flask import session, request
+from flask import session, request, current_app
 
 from cifsdk.client.zmq import ZMQ as Client
 from cifsdk.constants import ROUTER_ADDR
@@ -45,6 +45,9 @@ class TokenList(Resource):
         f = {}
         if args.q:
             f = {'q': args.q}
+
+        if current_app.config.get('dummy'):
+            return {'status': 'success', 'data': []}
 
         # noinspection PyUnreachableCode
         try:

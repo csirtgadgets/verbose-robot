@@ -24,9 +24,14 @@ exclude_lines =
 ignore_errors = True
 
 omit =
-    cif_httpd/views/feed/*
-    cif_httpd/_version.py
+    cif/_version.py
+    cif/constants.py
+    cif/exceptions.py
+    cif/gatherer/peers.py
+    cif/store/dummy.py
+    cif/httpd/app.py
     cif_httpd/constants.py
+    cif/hunter/*
 
 [html]
 directory = coverage_html_report
