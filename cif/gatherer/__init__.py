@@ -10,6 +10,8 @@ from pprint import pprint
 
 from csirtg_urlsml_tf import predict as predict_url
 from csirtg_domainsml_tf import predict as predict_fqdn
+from csirtg_ipsml_tf import predict as predict_ip
+from csirtg_ipsml_tf.utils import extract_features as extract_features_ip
 
 from csirtg_indicator import Indicator
 from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
@@ -53,6 +55,9 @@ class Gatherer(multiprocessing.Process):
         indicators = list(indicators)
         urls = [(i.indicator, idx) for idx, i in enumerate(indicators) if i.itype == 'url' and not i.probability]
 
+        if len(urls) == 0:
+            return indicators
+
         predict = predict_url([u[0] for u in urls])
 
         for idx, u in enumerate(urls):
@@ -64,9 +69,31 @@ class Gatherer(multiprocessing.Process):
         indicators = list(indicators)
         urls = [(i.indicator, idx) for idx, i in enumerate(indicators) if i.itype == 'fqdn' and not i.probability]
 
+        if len(urls) == 0:
+            return indicators
+
         predict = predict_fqdn([u[0] for u in urls])
 
         for idx, u in enumerate(urls):
+            indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
+
+        return indicators
+
+    def predict_ips(self, indicators):
+        indicators = list(indicators)
+        ips = [(i, idx) for idx, i in enumerate(indicators) if i.itype == 'ipv4' and not i.probability]
+
+        if len(ips) == 0:
+            return indicators
+
+        ips_feats = []
+        for i in ips:
+            f = list(extract_features_ip(i[0].indicator, i[0].reported_at))
+            ips_feats.append(f[0])
+
+        predict = predict_ip([ips_feats])
+
+        for idx, u in enumerate(ips):
             indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
 
         return indicators
@@ -75,7 +102,7 @@ class Gatherer(multiprocessing.Process):
         if isinstance(data, dict):
             data = [data]
 
-        indicators = [Indicator(**d, geo=True) for d in data]
+        indicators = [Indicator(**d, resolve_geo=True, resolve_peers=True) for d in data]
         for g in self.gatherers:
             for i in indicators:
                 try:
@@ -89,8 +116,14 @@ class Gatherer(multiprocessing.Process):
                     traceback.print_exc()
 
         if PREDICT == '1':
-            indicators = self.predict_urls(indicators)
-            indicators = self.predict_fqdns(indicators)
+            try:
+                indicators = self.predict_urls(indicators)
+                indicators = self.predict_fqdns(indicators)
+                indicators = self.predict_ips(indicators)
+            except Exception as e:
+                logger.error('predictions failed')
+                logger.error(e)
+                traceback.print_exc()
 
         return [i.__dict__() for i in indicators]
 
@@ -135,7 +168,7 @@ class Gatherer(multiprocessing.Process):
 def main():
     g = Gatherer()
 
-    data = {"indicator": "example.com"}
+    data = [{"indicator": "128.205.1.1"}, {'indicator': '128.205.1.2'}]
     data = g.process(data)
     pprint(data)
 

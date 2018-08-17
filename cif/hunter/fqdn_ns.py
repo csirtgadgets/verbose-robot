@@ -9,7 +9,6 @@ ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
 def process(i):
-    return
     if not ENABLED:
         return
 

@@ -11,20 +11,12 @@ from pprint import pprint
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
 
 
-def is_subdomain(i):
-    bits = i.split('.')
-    if len(bits) > 2:
-        return True
-
-
 def process(i):
     if not ENABLED:
         return
 
     if i.itype != 'fqdn':
         return
-
-    print(i.indicator)
 
     try:
         r = resolve_ns(i.indicator)
