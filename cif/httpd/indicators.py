@@ -217,15 +217,12 @@ class IndicatorList(Resource):
 
         tags = set([filters.get('tags')])
         if 'whitelist' in tags:
-            feed = f(
-                self._pull_feed(filters),
-                [],
-            )
-        else:
-            feed = list(f(
-                self._pull_feed(filters),
-                self._pull_whitelist(filters)
-            ))
+            return self._pull_feed(filters), 200
+
+        feed = list(f(
+            self._pull_feed(filters),
+            self._pull_whitelist(filters)
+        ))
 
         feed = aggregate(feed)
 

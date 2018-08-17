@@ -168,7 +168,7 @@ class Gatherer(multiprocessing.Process):
 def main():
     g = Gatherer()
 
-    data = [{"indicator": "128.205.1.1"}, {'indicator': '128.205.1.2'}]
+    data = [{"indicator": "128.205.1.1"}, {'indicator': '128.205.1.2'}, {'indicator': '54.165.246.0/24'}]
     data = g.process(data)
     pprint(data)
 

@@ -43,7 +43,9 @@ def process(i):
 
         ip.itype = 'ipv4'
         ip.rdata = i.indicator
-        ip.confidence = 1
+
+        ip.confidence = ip.confidence - 1
+
         ip.probability = 0
         rv.append(ip)
 

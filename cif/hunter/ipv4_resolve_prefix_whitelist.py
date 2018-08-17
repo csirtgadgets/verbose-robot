@@ -9,6 +9,9 @@ def process(i):
     if 'whitelist' not in i.tags:
         return
 
+    if i.indicator.endswith('/24'):
+        return
+
     prefix = i.indicator.split('.')
     prefix = prefix[:3]
     prefix.append('0/24')
@@ -20,5 +23,7 @@ def process(i):
 
     ii.indicator = prefix
     ii.tags = ['whitelist']
+
     ii.confidence = 2
+
     return ii
