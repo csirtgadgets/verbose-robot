@@ -48,7 +48,7 @@ def test_httpd_search(client):
 
     data = rv.data
 
-    rv = json.loads(data)
+    rv = json.loads(data.decode('utf-8'))
     assert rv['data'][0]['indicator'] == 'example.com'
 
 
