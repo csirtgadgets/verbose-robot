@@ -199,7 +199,7 @@ def before_request():
         assert request.method == method
 
     t = pull_token()
-    if not t and HTTP_LISTEN == '127.0.0.1':
+    if not t and HTTP_LISTEN == '127.0.0.1' and not app.config.get('dummy'):
         session['token'] = 'TEST-TOKEN'
         return
 
