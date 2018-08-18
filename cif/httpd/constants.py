@@ -6,8 +6,6 @@ PYVERSION = 2
 if sys.version_info > (3,):
     PYVERSION = 3
 
-from . import __version__ as VERSION
-
 RUNTIME_PATH = os.getcwd()
 ROUTER_ADDR = 'ipc://router.ipc'
 

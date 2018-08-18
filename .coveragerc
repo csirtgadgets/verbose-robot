@@ -27,11 +27,14 @@ omit =
     cif/_version.py
     cif/constants.py
     cif/exceptions.py
-    cif/gatherer/peers.py
+    cif/gatherer/__init__.py
     cif/store/dummy.py
     cif/httpd/app.py
-    cif_httpd/constants.py
+    cif/httpd/constants.py
     cif/hunter/*
+    cif/store/*
+    cif/webhooks.py
+
 
 [html]
 directory = coverage_html_report

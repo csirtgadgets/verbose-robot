@@ -23,10 +23,18 @@ logger = logging.getLogger(__name__)
 
 
 class Webhooks(multiprocessing.Process):
+    def __enter__(self):
+        return self
 
-    def __init__(self):
+    def __exit__(self, type, value, traceback):
+        return self
+
+    def __init__(self, **kwargs):
         multiprocessing.Process.__init__(self)
         self.exit = multiprocessing.Event()
+
+        if kwargs.get('test'):
+            return
 
         if not os.path.exists('webhooks.yml'):
             logger.error('webhooks.yml file is missing...')

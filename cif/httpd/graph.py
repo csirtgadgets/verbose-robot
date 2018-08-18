@@ -1,16 +1,12 @@
 import logging
-import arrow
-import re
 import traceback
-import copy
 
 from flask_restplus import Namespace, Resource, fields
-from flask import request, session
+from flask import request, session, current_app
 
-from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, HTTPD_FEED_WHITELIST_CONFIDENCE
-from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
+from cifsdk.constants import ROUTER_ADDR
 from cifsdk.client.zmq import ZMQ as Client
-from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
+from cifsdk.exceptions import AuthError, InvalidSearch
 from pprint import pprint
 
 logger = logging.getLogger('cif-httpd')
@@ -28,8 +24,12 @@ class GraphList(Resource):
     @api.doc('list_graph')
     def get(self):
         """List Graph Nodes"""
+
         try:
-            r = Client(ROUTER_ADDR, session['token']).graph_search({})
+            if current_app.config.get('dummy'):
+                r = []
+            else:
+                r = Client(ROUTER_ADDR, session['token']).graph_search({})
 
         except InvalidSearch as e:
             return api.abort(400)
@@ -43,4 +43,4 @@ class GraphList(Resource):
                 traceback.print_exc()
             return api.abort(500)
 
-        return {'status': 'success', 'data': r }, 200
+        return {'status': 'success', 'data': r}, 200

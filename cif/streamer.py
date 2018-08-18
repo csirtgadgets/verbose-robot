@@ -27,9 +27,18 @@ logger = logging.getLogger(__name__)
 
 class Streamer(multiprocessing.Process):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         multiprocessing.Process.__init__(self)
         self.exit = multiprocessing.Event()
+
+        if kwargs.get('test'):
+            return
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        return self
 
     def terminate(self):
         self.exit.set()

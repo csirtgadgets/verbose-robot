@@ -5,12 +5,9 @@ import tempfile
 import pytest
 from cif.httpd.app import app
 from cif.store import Store
-from zmq.eventloop import ioloop
 
-from cifsdk.constants import PYVERSION
 
 ROUTER_ADDR = 'ipc://{}'.format(tempfile.NamedTemporaryFile().name)
-router_loop = ioloop.IOLoop.instance()
 
 @pytest.fixture
 def client(request):
@@ -54,4 +51,9 @@ def test_httpd_search(client):
 
 def test_httpd_tokens(client):
     rv = client.get('/tokens/', headers={'Authorization': '1234'})
+    assert rv.status_code == 200
+
+
+def test_httpd_graph(client):
+    rv = client.get('/graph/', headers={'Authorization': '1234'})
     assert rv.status_code == 200

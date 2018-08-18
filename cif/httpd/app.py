@@ -21,7 +21,7 @@ from flask_restplus import Api, Namespace
 from werkzeug.contrib.fixers import ProxyFix
 from flask_sockets import Sockets
 
-from .utils import get_argument_parser, setup_logging, setup_runtime_path
+from cifsdk.utils import get_argument_parser, setup_logging, setup_runtime_path
 from .constants import HTTP_LISTEN, HTTP_LISTEN_PORT, TRACE, PIDFILE, SECRET_KEY
 
 from .indicators import api as indicators_api
@@ -75,7 +75,7 @@ APIS = [
     stats_api,
     predict_api,
     #firehose_api,
-    #graph_api
+    graph_api
 ]
 
 for A in APIS:
