@@ -59,3 +59,8 @@ feeds:
     remote: https://sslbl.abuse.ch/blacklist/sslblacklist.csv
     defaults:
       tags: ssl, blacklist
+
+  urlhaus:
+    remote: https://urlhaus.abuse.ch/downloads/csv
+    defaults:
+      tags: exploit, malware
