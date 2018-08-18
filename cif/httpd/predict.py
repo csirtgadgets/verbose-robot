@@ -25,6 +25,9 @@ class Predict(Resource):
         parser.add_argument('q')
         args = parser.parse_args()
 
+        if not args.q:
+            return {'data': '0'}
+
         if self.is_whitelisted(args.q):
             p = 0
 

@@ -5,7 +5,7 @@ import tempfile
 import pytest
 from cif.httpd.app import app
 from cif.store import Store
-
+from pprint import pprint
 
 ROUTER_ADDR = 'ipc://{}'.format(tempfile.NamedTemporaryFile().name)
 
@@ -26,17 +26,16 @@ def store():
     os.unlink(dbfile)
 
 
-def test_httpd_help(client):
+def test_httpd_basic_routes(client):
     rv = client.get('/')
     assert rv.status_code == 200
 
+    for r in ['ping', 'tokens', 'graph', 'predict', 'health']:
+        rv = client.get("%s/" % r)
+        assert rv.status_code == 401
 
-def test_httpd_ping(client):
-    rv = client.get('/ping/')
-    assert rv.status_code == 401
-
-    rv = client.get('/ping/', headers={'Authorization': '1234'})
-    assert rv.status_code == 200
+        rv = client.get("%s/" % r, headers={'Authorization': '1234'})
+        assert rv.status_code == 200
 
 
 def test_httpd_search(client):
@@ -49,11 +48,11 @@ def test_httpd_search(client):
     assert rv['data'][0]['indicator'] == 'example.com'
 
 
-def test_httpd_tokens(client):
-    rv = client.get('/tokens/', headers={'Authorization': '1234'})
+def test_httpd_predict(client):
+    rv = client.get('/predict/?q=csirtgadgets.com', headers={'Authorization': '1234'})
     assert rv.status_code == 200
 
+    data = rv.data
 
-def test_httpd_graph(client):
-    rv = client.get('/graph/', headers={'Authorization': '1234'})
-    assert rv.status_code == 200
+    rv = json.loads(data.decode('utf-8'))
+    assert float(rv['data']) > 0
