@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @pytest.yield_fixture
 def store():
     dbfile = tempfile.mktemp()
-    with Store(store_type='sqlite', dbfile=dbfile) as s:
+    with Store(store_type='sqlite', db_path=dbfile) as s:
         s.token_handler.token_create_admin()
         yield s
 
@@ -29,11 +29,13 @@ def store():
 def indicator():
     return {
         'indicator': 'example.com',
-        'tags': 'botnet',
+        'tags': ['botnet'],
         'provider': 'csirtgadgets.com',
         'group': 'everyone',
-        'lasttime': arrow.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+        'last_at': arrow.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
+        'reported_at': arrow.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
         'itype': 'fqdn',
+        'count': 1
     }
 
 

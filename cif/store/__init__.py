@@ -412,7 +412,7 @@ class Store(multiprocessing.Process):
 
     def handle_indicators_delete(self, token, data=None, id=None, client_id=None):
         t = self.store.tokens.admin(token)
-        return self.store.indicators.delete(t, data=data, id=id)
+        return self.store.indicators.delete(t, data=data)
 
 
 def main():

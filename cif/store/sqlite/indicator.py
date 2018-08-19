@@ -648,6 +648,9 @@ class IndicatorManager(IndicatorManagerPlugin):
                 if d.get('last_at') and arrow.get(d.get('last_at')).datetime <= arrow.get(r.last_at).datetime:
                     logger.debug('skipping: %s' % d['indicator'])
                 else:
+                    if not r.count:
+                        r.count = 1
+
                     r.count += 1
                     if not d.get('last_at'):
                         d['last_at'] = arrow.utcnow()

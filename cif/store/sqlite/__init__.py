@@ -40,9 +40,6 @@ if not TRACE:
     logger.setLevel(logging.ERROR)
     logging.getLogger('sqlalchemy.engine').setLevel(logging.ERROR)
 
-if PYVERSION > 2:
-    basestring = (str, bytes)
-
 
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -64,10 +61,11 @@ class SQLite(Store):
         self.autoflush = autoflush
         self.dictrows = dictrows
 
-        self.path = "sqlite:///{0}".format(DB_PATH)
+        self.path = kwargs.get('db_path', DB_PATH)
+        self.path = "sqlite:///{0}".format(self.path)
 
         # http://docs.sqlalchemy.org/en/latest/orm/contextual.html
-        self.engine = create_engine(self.path)
+        self.engine = create_engine(self.path, echo=False)
         self.handle = sessionmaker(bind=self.engine, autocommit=self.autocommit, autoflush=self.autoflush)
         self.handle = scoped_session(self.handle)
 
