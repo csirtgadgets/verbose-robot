@@ -61,7 +61,12 @@ class SQLite(Store):
         self.autoflush = autoflush
         self.dictrows = dictrows
 
-        self.path = kwargs.get('db_path', DB_PATH)
+        self.path = kwargs.get('db_path', kwargs.get('nodes'))
+        if not self.path:
+            self.path = DB_PATH
+        from pprint import pprint
+
+        pprint(kwargs)
         self.path = "sqlite:///{0}".format(self.path)
 
         # http://docs.sqlalchemy.org/en/latest/orm/contextual.html
