@@ -1,14 +1,12 @@
 from sqlalchemy.types import UserDefinedType, BINARY
 from sqlalchemy.ext.declarative import declarative_base
+
 Base = declarative_base()
 
 
 class Url(UserDefinedType):
 
     impl = BINARY(16)
-
-    def __init__(self, version=4):
-        self.version = version
 
     def get_col_spec(self, **kw):
         return "URL"

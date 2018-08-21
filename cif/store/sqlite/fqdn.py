@@ -7,9 +7,6 @@ class Fqdn(UserDefinedType):
 
     impl = BINARY(16)
 
-    def __init__(self, version=4):
-        self.version = version
-
     def get_col_spec(self, **kw):
         return "FQDN"
 
