@@ -1,12 +1,11 @@
-from sqlalchemy.types import UserDefinedType
+from sqlalchemy.types import UserDefinedType, BINARY
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import types
 Base = declarative_base()
 
 
 class Fqdn(UserDefinedType):
 
-    impl = types.BINARY(16)
+    impl = BINARY(16)
 
     def __init__(self, version=4):
         self.version = version
