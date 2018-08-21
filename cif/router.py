@@ -66,9 +66,6 @@ class Router(object):
                  hunter_token=HUNTER_TOKEN, hunter_threads=HUNTER_THREADS, gatherer_threads=GATHERER_THREADS,
                  test=False):
 
-        if test:
-            return
-
         self.context = zmq.Context()
 
         self._init_store(store_address, store_type, nodes=store_nodes)
@@ -80,9 +77,11 @@ class Router(object):
         if hunter_threads and int(hunter_threads) > 0:
             self._init_hunters(hunter_threads, hunter_token)
 
+        self.streamer = False
         if ROUTER_STREAM_ENABLED:
             self._init_streamer()
 
+        self.webhooks = False
         if ROUTER_WEBHOOKS_ENABLED:
             self._init_webhooks()
 
@@ -92,6 +91,7 @@ class Router(object):
         self.count_start = time.time()
 
         self.terminate = False
+        self.test = test
 
     def _init_webhooks(self):
         logger.debug('enabling webhooks service..')
@@ -164,16 +164,15 @@ class Router(object):
 
         sleep(1)  # cleanup
 
-        self.streamer.terminate()
-        self.webhooks.terminate()
-        self.store_p.terminate()
-
-        if self.streamer_s:
+        if self.streamer:
+            self.streamer.terminate()
             self.streamer_s.close()
 
-        if self.webhooks_s.close():
+        if self.webhooks:
+            self.webhooks.terminate()
             self.webhooks_s.close()
 
+        self.store_p.terminate()
         self.frontend_s.close()
 
         sleep(1)  # cleanup
@@ -211,6 +210,9 @@ class Router(object):
 
             if self.hunters and self.hunter_sink_s in items and items[self.hunter_sink_s] == zmq.POLLIN:
                 self.handle_message(self.hunter_sink_s)
+
+            if self.test:
+                break
 
     def _log_counter(self):
         self.count += 1
