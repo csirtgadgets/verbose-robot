@@ -39,17 +39,18 @@ class TokenHandler(object):
 
         raise AuthError('invalid token')
 
-    def token_create_admin(self, token=None, groups=GROUPS):
-        logger.info('testing for admin tokens...')
+    def _token_create(self, d):
+        logger.info('generating token for: %s' % d['username'])
+        rv = self.store.tokens.create(d)
+        logger.info('token created for %s: %s' % (d['username'], rv['token']))
+        return rv['token']
+
+    def token_create_admin(self, token=TOKEN, groups=GROUPS):
         if self.store.tokens.admin_exists():
             logger.info('admin token exists...')
             return
 
-        if TOKEN:
-            token = TOKEN
-
-        logger.info('admin token does not exist, generating..')
-        rv = self.store.tokens.create({
+        return self._token_create({
             'username': u'admin',
             'groups': groups,
             'read': u'1',
@@ -57,42 +58,31 @@ class TokenHandler(object):
             'admin': u'1',
             'token': token
         })
-        logger.info('admin token created: {}'.format(rv['token']))
-        return rv['token']
 
     def token_create_smrt(self, token=None, groups=GROUPS):
-        logger.info('testing for smrt tokens...')
         if self.store.tokens.smrt_exists():
             logger.info('smrt token exists...')
             return
 
-        rv = self.store.tokens.create({
+        return self._token_create({
             'username': u'csirtg-smrt',
             'groups': groups,
             'write': u'1',
             'token': token
         })
-        logger.info('smrt token created: {}'.format(rv['token']))
-        return rv['token']
 
     def token_create_hunter(self, token=None, groups=GROUPS):
-        logger.info('generating hunter token')
-        rv = self.store.tokens.create({
+        return self._tokens_create({
             'username': u'hunter',
             'groups': groups,
             'write': u'1',
             'token': token
         })
-        logger.info('hunter token created: {}'.format(rv['token']))
-        return rv['token']
 
     def token_create_httpd(self, token=None, groups=GROUPS):
-        logger.info('generating httpd token')
-        rv = self.store.tokens.create({
+        return self._token_create({
             'username': u'httpd',
             'groups': groups,
             'read': u'1',
             'token': token
         })
-        logger.info('httpd token created: {}'.format(rv['token']))
-        return rv['token']
