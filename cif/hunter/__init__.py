@@ -6,7 +6,6 @@ import zmq
 import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-import multiprocessing
 import os
 
 from cifsdk.client.zmq import ZMQ as Client
@@ -14,6 +13,7 @@ from cif.constants import HUNTER_ADDR, HUNTER_SINK_ADDR
 from csirtg_indicator import Indicator
 from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser, load_plugins, settings
 
+from cif.utils.process import MyProcess
 import cif.hunter
 
 logger = logging.getLogger(__name__)
@@ -38,38 +38,39 @@ if TRACE in [1, '1']:
     logger.setLevel(logging.DEBUG)
 
 
-class Hunter(multiprocessing.Process):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        return self
-
+class Hunter(MyProcess):
     def __init__(self, token=TOKEN):
-        multiprocessing.Process.__init__(self)
+        MyProcess.__init__(self)
+
         self.token = token
-        self.exit = multiprocessing.Event()
         self.exclude = {}
         self.settings = settings(CONFIG_PATH)
-        if not self.token:
-            if self.settings and self.settings.get('hunter_token'):
-                self.token = self.settings['hunter_token']
-            else:
-                logger.error('missing hunter token')
-                self.terminate()
 
-        if EXCLUDE:
-            for e in EXCLUDE.split(','):
-                provider, tag = e.split(':')
+        self._init_token()
+        self._init_exclude()
 
-                if not self.exclude.get(provider):
-                    self.exclude[provider] = set()
+    def _init_token(self):
+        if self.token:
+            return
 
-                logger.debug('setting hunter to skip: {}/{}'.format(provider, tag))
-                self.exclude[provider].add(tag)
+        if self.settings and self.settings.get('hunter_token'):
+            self.token = self.settings['hunter_token']
+        else:
+            logger.error('missing hunter token')
+            self.terminate()
 
-    def terminate(self):
-        self.exit.set()
+    def _init_exclude(self):
+        if not EXCLUDE:
+            return
+
+        for e in EXCLUDE.split(','):
+            provider, tag = e.split(':')
+
+            if not self.exclude.get(provider):
+                self.exclude[provider] = set()
+
+            logger.debug('setting hunter to skip: {}/{}'.format(provider, tag))
+            self.exclude[provider].add(tag)
 
     def start(self):
         plugins = load_plugins(cif.hunter.__path__)
@@ -89,7 +90,7 @@ class Hunter(multiprocessing.Process):
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except KeyboardInterrupt or SystemExit:
+            except (KeyboardInterrupt, SystemExit):
                 break
 
             if socket not in s:

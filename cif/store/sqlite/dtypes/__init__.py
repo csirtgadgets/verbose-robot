@@ -1,20 +1,9 @@
-from sqlalchemy.types import UserDefinedType
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import types
-import socket
-
-Base = declarative_base()
+from sqlalchemy.types import UserDefinedType, BINARY
 
 
-class Hash(UserDefinedType):
+class IOCType(UserDefinedType):
 
-    impl = types.BINARY(16)
-
-    def __init__(self, version=4):
-        self.version = version
-
-    def get_col_spec(self, **kw):
-        return "HASH"
+    impl = BINARY(16)
 
     def bind_processor(self, dialect):
 

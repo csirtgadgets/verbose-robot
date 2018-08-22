@@ -6,7 +6,8 @@ import zmq
 import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-import multiprocessing
+#import multiprocessing
+from .utils.process import MyProcess
 import os
 from pprint import pprint
 
@@ -25,27 +26,10 @@ if TRACE == '1':
 logger = logging.getLogger(__name__)
 
 
-class Streamer(multiprocessing.Process):
+class Streamer(MyProcess):
 
     def __init__(self, **kwargs):
-        multiprocessing.Process.__init__(self)
-        self.exit = multiprocessing.Event()
-
-        if kwargs.get('test'):
-            return
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        return self
-
-    def terminate(self):
-        self.exit.set()
-
-    def stop(self):
-        logger.info('shutting down')
-        self.terminate()
+        MyProcess.__init__(self, **kwargs)
 
     def start(self):
         context = zmq.Context()
@@ -62,10 +46,11 @@ class Streamer(multiprocessing.Process):
         poller = zmq.Poller()
         poller.register(router, zmq.POLLIN)
 
+        logger.info('streamer started..')
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except SystemExit or KeyboardInterrupt:
+            except (SystemExit, KeyboardInterrupt):
                 break
 
             if router not in s:
@@ -79,8 +64,11 @@ class Streamer(multiprocessing.Process):
             for d in data:
                 publisher.send(d)
 
+        router.close()
+        publisher.close()
         context.term()
         del router
+        self.stop()
 
 
 def main():

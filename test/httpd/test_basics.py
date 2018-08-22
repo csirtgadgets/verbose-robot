@@ -27,7 +27,7 @@ def store():
     os.unlink(dbfile)
 
 
-def test_routes(client):
+def test_httpd_routes(client):
     rv = client.get('/')
     assert rv.status_code == 200
 
@@ -39,7 +39,7 @@ def test_routes(client):
         assert rv.status_code == 200
 
 
-def test_search(client):
+def test_httpd_search(client):
     rv = client.get('/indicators/?q=example.com', headers={'Authorization': '1234'})
     assert rv.status_code == 200
 
@@ -49,7 +49,7 @@ def test_search(client):
     assert rv['data'][0]['indicator'] == 'example.com'
 
 
-def test_predict(client):
+def test_httpd_predict(client):
     rv = client.get('/predict/?q=csirtgadgets.com', headers={'Authorization': '1234'})
     assert rv.status_code == 200
 
