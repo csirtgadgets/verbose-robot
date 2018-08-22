@@ -1,12 +1,11 @@
 import os
 import arrow
 import json
-from base64 import b64decode, b64encode
+from base64 import b64encode
 import ipaddress
 import re
 import logging
 import time
-from pprint import pprint
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index, func
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
@@ -17,14 +16,14 @@ from networkx.readwrite import json_graph
 
 from csirtg_indicator import resolve_itype
 from cifsdk.exceptions import InvalidSearch
-from cifsdk.constants import VALID_FILTERS, DATA_PATH, PYVERSION
+from cifsdk.constants import VALID_FILTERS, PYVERSION
 from cif.store.plugin.indicator import IndicatorManagerPlugin
 
-from .ip import Ip
-from .fqdn import Fqdn
-from .url import Url
-from .hash import Hash
-
+from cif.store.sqlite.dtypes.ip import Ip
+from cif.store.sqlite.dtypes.fqdn import Fqdn
+from cif.store.sqlite.dtypes.url import Url
+from cif.store.sqlite.dtypes.hash import Hash
+from cif.store.sqlite.dtypes.email import Email
 
 if PYVERSION > 2:
     basestring = (str, bytes)
@@ -177,6 +176,18 @@ class Fqdn(Base):
     )
 
 
+class Email(Base):
+    __tablename__ = 'indicators_email'
+
+    id = Column(Integer, primary_key=True)
+    email = Column(Email, index=True)
+
+    indicator_id = Column(Integer, ForeignKey('indicators.id', ondelete='CASCADE'))
+    indicator = relationship(
+        Indicator,
+    )
+
+
 class Url(Base):
     __tablename__ = 'indicators_url'
 
@@ -285,9 +296,6 @@ class IndicatorManager(IndicatorManagerPlugin):
             return s
 
         i = filters.pop('indicator')
-        if PYVERSION == 2:
-            if isinstance(i, str):
-                i = unicode(i)
 
         try:
             itype = resolve_itype(i)
@@ -296,8 +304,11 @@ class IndicatorManager(IndicatorManagerPlugin):
             s = s.join(Message).filter(Indicator.Message.like('%{}%'.format(i)))
             return s
 
-        if itype in ['email']:
-            s = s.filter(Indicator.indicator == i)
+        if itype == 'email':
+            s = s.join(Email).filter(or_(
+                    Email.email.like('%.{}'.format(i)),
+                    Email.email == i)
+            )
             return s
 
         if itype == 'ipv4':
@@ -457,10 +468,6 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         if not i.get('reported_at'):
             i['reported_at'] = arrow.utcnow().datetime.replace(tzinfo=None)
-
-        if PYVERSION == 2:
-            i['last_at'] = arrow.get(i['last_at']).datetime.replace(tzinfo=None)
-            i['reported_at'] = arrow.get(i['reported_at']).datetime.replace(tzinfo=None)
 
         if not i.get('first_at'):
             i['first_at'] = i['last_at']

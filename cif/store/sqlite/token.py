@@ -2,14 +2,10 @@ import logging
 import arrow
 from sqlalchemy import Column, Integer, String, DateTime, UnicodeText, Boolean, or_, ForeignKey
 from sqlalchemy.orm import class_mapper, relationship, backref
-from cifsdk.constants import PYVERSION
 from sqlalchemy.ext.declarative import declarative_base
 from cif.store.plugin.token import TokenManagerPlugin
 
 logger = logging.getLogger('cif.store.sqlite')
-
-if PYVERSION > 2:
-    basestring = (str, bytes)
 
 Base = declarative_base()
 

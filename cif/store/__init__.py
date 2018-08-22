@@ -10,26 +10,22 @@ from argparse import RawDescriptionHelpFormatter
 import yaml
 from pprint import pprint
 import arrow
-import multiprocessing
-from csirtg_indicator import Indicator
 import zmq
 import time
 import traceback
 from base64 import b64decode
 
-import cif.store
-
+from csirtg_indicator import Indicator
 from cifsdk.msg import Msg
 from cif.constants import STORE_ADDR, PYVERSION
 from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, load_plugin
 
+from cif.utils.process import MyProcess
+import cif.store
 from .ping import PingHandler
 from .token import TokenHandler
-
-if PYVERSION > 2:
-    basestring = (str, bytes)
 
 MOD_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 STORE_PATH = os.path.join(MOD_PATH, "store")
@@ -59,20 +55,13 @@ if TRACE == '1':
     logger.setLevel(logging.DEBUG)
 
 
-class Store(multiprocessing.Process):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        return False
-
+class Store(MyProcess):
     def __init__(self, store_type=STORE_DEFAULT, store_address=STORE_ADDR, **kwargs):
-        multiprocessing.Process.__init__(self)
+        MyProcess.__init__(self)
 
         self.store_addr = store_address
         self.store = store_type
         self.kwargs = kwargs
-        self.exit = multiprocessing.Event()
         self.create_queue = {}
         self.create_queue_flush = CREATE_QUEUE_FLUSH
         self.create_queue_limit = CREATE_QUEUE_LIMIT
@@ -204,22 +193,19 @@ class Store(multiprocessing.Process):
 
             last_flushed = self._check_create_queue(last_flushed)
 
-    def terminate(self):
-        self.exit.set()
-
     def handle_message(self, m):
         err = None
         logger.debug(m)
         id, client_id, token, mtype, data = m
 
-        if isinstance(data, basestring):
-            try:
-                data = json.loads(data)
-            except ValueError as e:
-                logger.error(e)
-                data = json.dumps({"status": "failed"})
-                Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
-                return
+        try:
+            data = json.loads(data)
+        except ValueError as e:
+            logger.error(e)
+            data = json.dumps({"status": "failed"})
+            Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
+            return
+
 
         if mtype.startswith('tokens'):
             handler = getattr(self.token_handler, "handle_" + mtype)
@@ -285,18 +271,13 @@ class Store(multiprocessing.Process):
         return True
 
     def _cleanup_indicator(self, i):
-        # python2
-        try:
-            if isinstance(i['indicator'], str):
-                i['indicator'] = unicode(i['indicator'])
-        except:
-            pass
+        if not i.get('message'):
+            return
 
-        if i.get('message'):
-            try:
-                i['message'] = b64decode(i['message'])
-            except Exception as e:
-                pass
+        try:
+            i['message'] = b64decode(i['message'])
+        except Exception as e:
+            pass
 
     def _queue_indicator(self, id, token, data, client_id):
         if not self.create_queue.get(token):
@@ -337,15 +318,9 @@ class Store(multiprocessing.Process):
     def handle_indicators_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
 
-        if data.get('indicator'):
-            # python2
-            try:
-                if isinstance(data['indicator'], str):
-                    data['indicator'] = unicode(data['indicator'])
-            except:
-                pass
-
         # TODO - convert days to reported_at if doesn't exist
+        # SEE ISSUE!
+
         # tz,tz
 
         # if not data.get('reporttime'):
@@ -384,7 +359,6 @@ class Store(multiprocessing.Process):
             logger.error(e)
 
             if logger.getEffectiveLevel() == logging.DEBUG:
-                import traceback
                 traceback.print_exc()
 
             raise InvalidSearch('invalid search')
@@ -393,13 +367,13 @@ class Store(multiprocessing.Process):
 
     def handle_stats_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
+
         try:
             x = self.store.indicators.stats_search(t, data)
         except Exception as e:
             logger.error(e)
 
             if logger.getEffectiveLevel() == logging.DEBUG:
-                import traceback
                 traceback.print_exc()
 
             raise InvalidSearch('invalid search')

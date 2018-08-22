@@ -46,7 +46,7 @@ class Hunter(MyProcess):
         self.exclude = {}
         self.settings = settings(CONFIG_PATH)
 
-        self._init_toke()
+        self._init_token()
         self._init_exclude()
 
     def _init_token(self):

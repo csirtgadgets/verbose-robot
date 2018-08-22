@@ -1,24 +1,21 @@
-from sqlalchemy.types import UserDefinedType
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import types
+from . import IOCType
 import socket
 
 Base = declarative_base()
 
 
-class Ip(UserDefinedType):
+class Ip(IOCType):
     # http://docs.sqlalchemy.org/en/latest/_modules/examples/postgis/postgis.html
     # http://docs.sqlalchemy.org/en/latest/core/custom_types.html#creating-new-types
     # http://sqlalchemy-utils.readthedocs.io/en/latest/_modules/sqlalchemy_utils/types/uuid.html
     # https://github.com/zzzeek/sqlalchemy/blob/master/lib/sqlalchemy/sql/sqltypes.py#L852
 
-    impl = types.BINARY(16)
-
     def __init__(self, version=4):
         self.version = version
 
     def get_col_spec(self, **kw):
-        return "IP"
+        return 'IP'
 
     def bind_processor(self, dialect):
 
@@ -39,7 +36,3 @@ class Ip(UserDefinedType):
             return socket.inet_ntop(value)
 
         return process
-
-    @property
-    def python_type(self):
-        return self.impl.type.python_type
