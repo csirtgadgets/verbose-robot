@@ -23,7 +23,6 @@ from cifsdk.msg import Msg
 from cif.constants import STORE_ADDR, PYVERSION
 from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
 from cifsdk.exceptions import AuthError, InvalidSearch
-from cif.exceptions import StoreLockError
 from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, load_plugin
 
 from .ping import PingHandler
@@ -166,9 +165,6 @@ class Store(multiprocessing.Process):
 
             except AuthError as e:
                 rv = {'status': 'failed', 'message': 'unauthorized'}
-
-            except StoreLockError:
-                rv = {'status': 'failed', 'message': 'busy'}
 
             for id, client_id, _ in self.create_queue[t]['messages']:
                 Msg(id=id, client_id=client_id, mtype=Msg.INDICATORS_CREATE, data=rv)

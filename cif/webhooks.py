@@ -3,7 +3,7 @@
 import ujson as json
 import logging
 import zmq
-import multiprocessing
+from .utils.process import MyProcess
 import os
 import yaml
 import requests
@@ -22,16 +22,9 @@ if TRACE == '1':
 logger = logging.getLogger(__name__)
 
 
-class Webhooks(multiprocessing.Process):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        return self
-
+class Webhooks(MyProcess):
     def __init__(self, **kwargs):
-        multiprocessing.Process.__init__(self)
-        self.exit = multiprocessing.Event()
+        MyProcess.__init__(self, **kwargs)
 
         if kwargs.get('test'):
             return
@@ -45,13 +38,6 @@ class Webhooks(multiprocessing.Process):
                 self.hooks = yaml.load(f)
             except yaml.YAMLError as exc:
                 logger.error(exc)
-
-    def terminate(self):
-        self.exit.set()
-
-    def stop(self):
-        logger.info('shutting down')
-        self.terminate()
 
     def is_search(self, data):
         if data.get('indicator') and data.get('limit') and data.get('nolog', '0') == '0':
@@ -101,7 +87,7 @@ class Webhooks(multiprocessing.Process):
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except SystemExit or KeyboardInterrupt:
+            except (SystemExit, KeyboardInterrupt):
                 break
 
             if router not in s:
@@ -116,3 +102,4 @@ class Webhooks(multiprocessing.Process):
         router.close()
         context.term()
         del router
+        self.stop()

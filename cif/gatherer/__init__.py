@@ -4,16 +4,13 @@ import ujson as json
 import logging
 import traceback
 import zmq
-import multiprocessing
 import os
 from pprint import pprint
 
-from csirtg_urlsml_tf import predict as predict_url
-from csirtg_domainsml_tf import predict as predict_fqdn
-from csirtg_ipsml_tf import predict as predict_ip
-from csirtg_ipsml_tf.utils import extract_features as extract_features_ip
-
 from csirtg_indicator import Indicator
+
+from cif.utils.predict import predict_fqdns, predict_ips, predict_urls
+from cif.utils.process import MyProcess
 from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
 from cifsdk.msg import Msg
 from cifsdk.utils import load_plugins
@@ -33,70 +30,13 @@ if TRACE:
     logger.setLevel(logging.DEBUG)
 
 
-class Gatherer(multiprocessing.Process):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        return self
-
-    def __init__(self, pull=GATHERER_ADDR, push=GATHERER_SINK_ADDR):
-        multiprocessing.Process.__init__(self)
+class Gatherer(MyProcess):
+    def __init__(self, pull=GATHERER_ADDR, push=GATHERER_SINK_ADDR, **kwargs):
+        MyProcess.__init__(self)
         self.pull = pull
         self.push = push
-        self.exit = multiprocessing.Event()
 
         self.gatherers = load_plugins(cif.gatherer.__path__)
-
-    def terminate(self):
-        self.exit.set()
-
-    def predict_urls(self, indicators):
-        indicators = list(indicators)
-        urls = [(i.indicator, idx) for idx, i in enumerate(indicators) if i.itype == 'url' and not i.probability]
-
-        if len(urls) == 0:
-            return indicators
-
-        predict = predict_url([u[0] for u in urls])
-
-        for idx, u in enumerate(urls):
-            indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
-
-        return indicators
-
-    def predict_fqdns(self, indicators):
-        indicators = list(indicators)
-        urls = [(i.indicator, idx) for idx, i in enumerate(indicators) if i.itype == 'fqdn' and not i.probability]
-
-        if len(urls) == 0:
-            return indicators
-
-        predict = predict_fqdn([u[0] for u in urls])
-
-        for idx, u in enumerate(urls):
-            indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
-
-        return indicators
-
-    def predict_ips(self, indicators):
-        indicators = list(indicators)
-        ips = [(i, idx) for idx, i in enumerate(indicators) if i.itype == 'ipv4' and not i.probability]
-
-        if len(ips) == 0:
-            return indicators
-
-        ips_feats = []
-        for i in ips:
-            f = list(extract_features_ip(i[0].indicator, i[0].reported_at))
-            ips_feats.append(f[0])
-
-        predict = predict_ip([ips_feats])
-
-        for idx, u in enumerate(ips):
-            indicators[u[1]].probability = round((predict[idx][0] * 100), 2)
-
-        return indicators
 
     def process(self, data):
         if isinstance(data, dict):
@@ -115,11 +55,12 @@ class Gatherer(multiprocessing.Process):
                     logger.error(e)
                     traceback.print_exc()
 
+        # these should be done in bulk
         if PREDICT == '1':
             try:
-                indicators = self.predict_urls(indicators)
-                indicators = self.predict_fqdns(indicators)
-                indicators = self.predict_ips(indicators)
+                indicators = predict_urls(indicators)
+                indicators = predict_fqdns(indicators)
+                indicators = predict_ips(indicators)
             except Exception as e:
                 logger.error('predictions failed')
                 logger.error(e)
@@ -147,7 +88,7 @@ class Gatherer(multiprocessing.Process):
         while not self.exit.is_set():
             try:
                 s = dict(poller.poll(1000))
-            except KeyboardInterrupt or SystemExit:
+            except (KeyboardInterrupt, SystemExit):
                 break
 
             if pull_s not in s:
@@ -163,6 +104,7 @@ class Gatherer(multiprocessing.Process):
         # pull_s.close()
         # push_s.close()
         # context.term()
+        self.stop()
 
 
 def main():
