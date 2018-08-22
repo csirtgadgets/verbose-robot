@@ -12,7 +12,7 @@ fake = Faker()
 
 def test_predict_ipv4():
     indicators = []
-    for d in range(0, 5):
+    for d in range(0, 25):
         indicators.append(Indicator(str(fake.ipv4()), reported_at=arrow.utcnow(), resolve_geo=True))
 
     pprint(indicators)
@@ -20,12 +20,12 @@ def test_predict_ipv4():
     probs = [i.probability for i in indicators]
     avg = (sum(probs) / len(probs))
     print(avg)
-    assert 16 < avg < 84
+    assert 16 < avg < 93
 
 
 def test_predict_url():
     indicators = []
-    for d in range(0, 5):
+    for d in range(0, 25):
         indicators.append(Indicator(str(fake.url()), resolve_geo=True))
 
     pprint(indicators)
@@ -33,12 +33,12 @@ def test_predict_url():
     probs = [i.probability for i in indicators]
     avg = (sum(probs) / len(probs))
     print(avg)
-    assert 16 < avg < 84
+    assert 16 < avg < 93
 
 
 def test_predict_fqdn():
     indicators = []
-    for d in range(0, 5):
+    for d in range(0, 25):
         indicators.append(Indicator(str(fake.domain_name(2)), resolve_geo=True))
 
     indicators = predict_fqdns(indicators)
@@ -46,4 +46,4 @@ def test_predict_fqdn():
     probs = [i.probability for i in indicators]
     avg = (sum(probs) / len(probs))
     print(avg)
-    assert 16 < avg < 84
+    assert 16 < avg < 93
