@@ -48,8 +48,6 @@ def predict_ips(indicators):
         return indicators
 
     ips_feats = []
-    from pprint import pprint
-    pprint(ips)
     for i in ips:
         f = list(extract_features_ip(i[0], i[1]))
         ips_feats.append(f[0])

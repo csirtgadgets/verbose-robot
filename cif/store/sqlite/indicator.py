@@ -639,6 +639,9 @@ class IndicatorManager(IndicatorManagerPlugin):
                     n -= 1
                     return n
 
+            if d.get('rdata', '') != '' and isinstance(d['rdata'], list):
+                d['rdata'] = ','.join(d['rdata'])
+
             self._insert_graph(d)
 
             tags = self._normalize_tags(d)
