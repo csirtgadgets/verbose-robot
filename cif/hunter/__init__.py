@@ -55,6 +55,7 @@ class Hunter(MyProcess):
 
         if self.settings and self.settings.get('hunter_token'):
             self.token = self.settings['hunter_token']
+            logger.info('token: %s' % self.token)
         else:
             logger.error('missing hunter token')
             self.terminate()

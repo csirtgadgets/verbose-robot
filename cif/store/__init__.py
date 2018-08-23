@@ -171,6 +171,12 @@ class Store(MyProcess):
         if t:
             self.token_handler.token_create_smrt(token=t)
 
+        from cif.hunter import CONFIG_PATH as ROUTER_CONFIG_PATH
+        if not os.path.exists(ROUTER_CONFIG_PATH):
+            t = self.token_handler.token_create_hunter()
+            with open(ROUTER_CONFIG_PATH, 'w') as f:
+                f.write('hunter_token: %s' % t)
+
         self.router.connect(self.store_addr)
 
         poller = zmq.Poller()
@@ -205,7 +211,6 @@ class Store(MyProcess):
             data = json.dumps({"status": "failed"})
             Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
             return
-
 
         if mtype.startswith('tokens'):
             handler = getattr(self.token_handler, "handle_" + mtype)
