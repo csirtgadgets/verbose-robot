@@ -71,6 +71,8 @@ class Indicator(Base):
     count = Column(Integer)
     region = Column(String, index=True)
     related = Column(String, index=True)
+    reference = Column(UnicodeText)
+    reference_tlp = Column(String)
 
     tags = relationship(
         'Tag',
@@ -638,6 +640,9 @@ class IndicatorManager(IndicatorManagerPlugin):
                     logger.debug('skipping: %s' % d['indicator'])
                     n -= 1
                     return n
+
+            if d.get('rdata', '') != '' and isinstance(d['rdata'], list):
+                d['rdata'] = ','.join(d['rdata'])
 
             self._insert_graph(d)
 

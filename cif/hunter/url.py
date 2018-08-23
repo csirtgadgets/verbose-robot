@@ -1,5 +1,4 @@
 import logging, arrow
-from csirtg_indicator import Indicator, resolve_itype
 from urllib.parse import urlparse
 
 
@@ -7,26 +6,25 @@ logger = logging.getLogger('cif_hunter')
 
 
 def process(i):
-    if i.itype != 'url':
+    if not i.is_url:
         return
 
     u = urlparse(i.indicator)
     if not u.hostname:
         return
 
-    try:
-        resolve_itype(u.hostname)
-    except TypeError as e:
-        logger.error(u.hostname)
-        logger.error(e)
-        return
+    fqdn = i.copy(**{
+        'indicator': u.hostname,
+        'rdata': [i.indicator],
+        'last_at': arrow.utcnow(),
+        'reported_at': arrow.utcnow(),
+        'confidence': 0,
+    })
 
-    fqdn = Indicator(**i.__dict__())
-    fqdn.lasttime = arrow.utcnow()
-    fqdn.indicator = u.hostname
-    fqdn.itype = 'fqdn'
-    fqdn.confidence = 2
-    fqdn.rdata = i.indicator
-    fqdn.probability = 0
+    fqdn.geo_resolve()
+    fqdn.fqdn_resolve()
 
-    return fqdn
+    if i.confidence > 0:
+        fqdn.confidence = i.confidence - 1
+
+    yield fqdn

@@ -1,62 +1,92 @@
-import logging
-from csirtg_indicator.utils.network import resolve_ns
-from csirtg_indicator import Indicator
-from dns.resolver import Timeout
-from csirtg_indicator import resolve_itype
 import arrow
-import os
-import copy
+import os, re
 from pprint import pprint
 
-ENABLED = os.getenv('CIF_HUNTER_ADVANCED', False)
+ENABLED = os.getenv('CIF_HUNTER_ADVANCED', True)
 
 
 def process(i):
-    if not ENABLED:
+    if not ENABLED or not i.is_fqdn:
         return
 
-    if i.itype != 'fqdn':
+    if 'pdns' in i.tags:
         return
 
-    try:
-        r = resolve_ns(i.indicator)
-        if not r:
-            return
-    except Timeout:
+    i.fqdn_resolve()
+
+    if i.get("rdata", '') == '':
         return
 
-    rv = []
+    for r in i.rdata:
+        ip = i.copy(**{'indicator': r, 'last_at': arrow.utcnow()})
+        ip.rdata = [i.indicator]
+        ip.fqdn_resolve()
+        ip.geo_resolve()
+        ip.confidence = 0
+        if i.confidence > 0:
+            ip.confidence = i.confidence - 1
 
-    for rr in r:
-        rr = str(rr)
-        if rr in ["", 'localhost']:
-            continue
+        pdns = ip.copy(tags=['pdns'], confidence=4.0, rdata=[i.indicator])
 
-        ip = Indicator(**i.__dict__())
-        ip.lasttime = arrow.utcnow()
+        yield ip
+        yield pdns
 
-        ip.indicator = rr
-        try:
-            resolve_itype(ip.indicator)
-        except:
-            continue
+    for ns in i.get('ns', []):
+        ns = ns.rstrip('.')
+        i2 = i.copy(**{
+            'indicator': ns,
+            'confidence': 0,
+            'ns': None,
+            'mx': None,
+            'rdata': None
+        })
+        i2.fqdn_resolve()
+        i2.geo_resolve()
 
-        ip.itype = 'ipv4'
-        ip.rdata = i.indicator
+        yield i2
 
-        ip.confidence = ip.confidence - 1
+    for mx in i.get('mx', []):
+        mx = re.sub(r'^\d+ ', '', mx)
+        mx = mx.rstrip('.')
+        i2 = i.copy(**{
+            'indicator': mx,
+            'confidence': 0,
+            'ns': None,
+            'mx': None,
+            'rdata': None
+        })
+        i2.fqdn_resolve()
+        i2.geo_resolve()
 
-        ip.probability = 0
-        rv.append(ip)
+        yield i2
 
-        pdns = Indicator(**copy.deepcopy(i.__dict__()))
+    for r in i.get('cname', []):
+        i2 = i.copy(**{
+            'indicator': r,
+            'confidence': 0,
+            'ns': None,
+            'mx': None,
+            'rdata': None
+        })
+        i2.fqdn_resolve()
+        i2.geo_resolve()
 
-        # also create a passive dns tag
-        pdns.tags = 'pdns'
-        pdns.confidence = 4
-        pdns.probability = 0
-        pdns.indicator = ip.indicator
-        pdns.rdata = i.indicator
-        rv.append(pdns)
+        yield i2
 
-    return rv
+
+def main():
+    import logging
+
+    logger = logging.getLogger('')
+    logger.setLevel(logging.DEBUG)
+
+    from csirtg_indicator import Indicator
+    i = Indicator('csirtg.io', confidence=2, tags='phishing')
+    rv = process(i)
+
+    for r in rv:
+        print(str(r))
+
+
+if __name__ == '__main__':
+    main()

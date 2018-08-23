@@ -134,6 +134,10 @@ class Hunter(MyProcess):
                     if not rv:
                         continue
 
+                    from types import GeneratorType
+                    if isinstance(rv, GeneratorType):
+                        rv = list(r for r in rv)
+
                     if not isinstance(rv, list):
                         rv = [rv]
 

@@ -1,23 +1,12 @@
-from csirtg_indicator import Indicator, resolve_itype
-import arrow
-
 
 def process(i):
-    if i.itype != 'fqdn':
+    if not i.is_fqdn() or not i.is_subdomain():
         return
 
-    if not i.is_subdomain():
-        return
+    i2 = i.copy(**{
+        'indicator': i.is_subdomain(),
+        'confidence': 0
+    })
+    i2.fqdn_resolve()
 
-    fqdn = Indicator(**i.__dict__())
-    fqdn.probability = 0
-    fqdn.indicator = i.is_subdomain()
-    fqdn.lasttime = arrow.utcnow()
-
-    try:
-        resolve_itype(fqdn.indicator)
-    except:
-        return
-
-    fqdn.confidence = 1
-    return fqdn
+    yield i2

@@ -17,26 +17,26 @@ CLIENT = Client()
 logger = logging.getLogger(__name__)
 
 
-def process(i):
-    return
-
+def _enabled(i):
     if not ENABLED and not TOKEN:
         return
 
-    if i.itype != 'ipv4':
+    if not i.is_ipv4():
         return
 
     if 'search' not in i.tags:
         return
 
-    if i.confidence and i.confidence < 9:
+    if i.confidence and i.confidence < 4:
         return
 
     if re.search('^(\S+)\/(\d+)$', i.indicator):
         return
 
-    max = MAX_QUERY_RESULTS
-    rv = []
+
+def process(i, max=MAX_QUERY_RESULTS):
+    if not _enabled(i):
+        return
 
     try:
         for r in CLIENT.search(i.indicator):
@@ -63,7 +63,8 @@ def process(i):
                 group='everyone'
             )
 
-            rv.append(ii)
+            yield ii
+
             max -= 1
             if max == 0:
                 break
@@ -73,5 +74,3 @@ def process(i):
     except Exception as e:
         logger.exception(e)
         return
-
-    return rv
