@@ -61,6 +61,7 @@ def process(i):
         yield i2
 
     for r in i.get('cname', []):
+        r = r.rstrip('.')
         i2 = i.copy(**{
             'indicator': r,
             'confidence': 0,
