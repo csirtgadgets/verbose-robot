@@ -71,6 +71,7 @@ class Indicator(Base):
     count = Column(Integer)
     region = Column(String, index=True)
     related = Column(String, index=True)
+    reference = Column(UnicodeText)
 
     tags = relationship(
         'Tag',

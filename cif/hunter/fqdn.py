@@ -1,5 +1,5 @@
 import arrow
-import os
+import os, re
 from pprint import pprint
 
 ENABLED = os.getenv('CIF_HUNTER_ADVANCED', True)
@@ -11,9 +11,6 @@ def process(i):
 
     if 'pdns' in i.tags:
         return
-
-    # if i.get("rdata", '') != '' and not i.get('rdata').startswith('http'):
-    #     return
 
     i.fqdn_resolve()
 
@@ -33,6 +30,48 @@ def process(i):
 
         yield ip
         yield pdns
+
+    for ns in i.get('ns', []):
+        ns = ns.rstrip('.')
+        i2 = i.copy(**{
+            'indicator': ns,
+            'confidence': 0,
+            'ns': None,
+            'mx': None,
+            'rdata': None
+        })
+        i2.fqdn_resolve()
+        i2.geo_resolve()
+
+        yield i2
+
+    for mx in i.get('mx', []):
+        mx = re.sub(r'^\d+ ', '', mx)
+        mx = mx.rstrip('.')
+        i2 = i.copy(**{
+            'indicator': mx,
+            'confidence': 0,
+            'ns': None,
+            'mx': None,
+            'rdata': None
+        })
+        i2.fqdn_resolve()
+        i2.geo_resolve()
+
+        yield i2
+
+    for r in i.get('cname', []):
+        i2 = i.copy(**{
+            'indicator': r,
+            'confidence': 0,
+            'ns': None,
+            'mx': None,
+            'rdata': None
+        })
+        i2.fqdn_resolve()
+        i2.geo_resolve()
+
+        yield i2
 
 
 def main():

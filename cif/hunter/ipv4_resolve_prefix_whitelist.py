@@ -1,9 +1,7 @@
-import arrow
-from csirtg_indicator import Indicator
 
 
 def process(i):
-    if i.itype not in ['ipv4', 'ipv6']:
+    if not i.is_ip():
         return
 
     if 'whitelist' not in i.tags:
@@ -12,18 +10,10 @@ def process(i):
     if i.indicator.endswith('/24'):
         return
 
-    prefix = i.indicator.split('.')
-    prefix = prefix[:3]
-    prefix.append('0/24')
-    prefix = '.'.join(prefix)
+    i2 = i.copy(**{
+        'indicator': i.ipv4_to_prefix(),
+        'tags': ['whitelist'],
+        'confidence': 2
+    })
 
-    ii = Indicator(**i.__dict__())
-    ii.probability = 0
-    ii.lasttime = arrow.utcnow()
-
-    ii.indicator = prefix
-    ii.tags = ['whitelist']
-
-    ii.confidence = 2
-
-    return ii
+    yield i2
