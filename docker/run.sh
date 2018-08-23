@@ -7,7 +7,7 @@ echo ""
 echo "${CIF_TOKEN}"
 echo ""
 
-C=$(docker run -e CIF_TOKEN="${CIF_TOKEN}" -it -d -p 5000:5000 --name verbose-robot csirtgadgets/verbose-robot)
+C=$(docker run -e CIF_TOKEN="${CIF_TOKEN}" -it -d -p 5000:5000 --name verbose-robot --memory 2g --memory-swap 4g csirtgadgets/verbose-robot)
 
 echo "Getting a shell into the container..."
 docker exec -it $C /bin/bash
