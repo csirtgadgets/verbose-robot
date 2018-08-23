@@ -72,6 +72,7 @@ class Indicator(Base):
     region = Column(String, index=True)
     related = Column(String, index=True)
     reference = Column(UnicodeText)
+    reference_tlp = Column(String)
 
     tags = relationship(
         'Tag',
