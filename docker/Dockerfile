@@ -12,7 +12,7 @@ RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-
 
 RUN apt-get update
 RUN apt-get install -y geoipupdate python3-dev python3-pip python-setuptools python-pip build-essential git sudo \
-    resolvconf curl vim mlocate sqlite3
+    resolvconf curl vim mlocate sqlite3 htop tcpdump
 RUN pip3 install pip --upgrade
 
 RUN geoipupdate -v
