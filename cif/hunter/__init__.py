@@ -143,6 +143,10 @@ class Hunter(MyProcess):
                         rv = [rv]
 
                     rv = [i.__dict__() for i in rv]
+
+                    if len(rv) == 0:
+                        continue
+
                     router.indicators_create(rv)
 
                 except Exception as e:
