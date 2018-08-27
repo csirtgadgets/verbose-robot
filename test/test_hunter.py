@@ -20,7 +20,7 @@ def test_hunter():
         assert isinstance(h, Hunter)
 
 
-#@pytest.mark.skipif(DISABLE_FAST_TESTS, reason='network test disabled')
+@pytest.mark.skipif(DISABLE_FAST_TESTS, reason='network test disabled')
 def test_hunter_plugins():
     plugins = load_plugins(cif.hunter.__path__)
     count = 0
@@ -42,6 +42,4 @@ def test_hunter_plugins():
         rv = [i.__dict__() for i in rv]
         count += len(rv)
 
-
     assert count > 0
-
