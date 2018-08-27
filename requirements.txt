@@ -29,6 +29,8 @@ lxml<4.0
 pyyaml
 
 csirtg_indicator>=2.0a4,<3.0
+
+tensorflow==1.8
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg-ipsml-tf

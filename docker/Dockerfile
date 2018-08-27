@@ -21,18 +21,14 @@ RUN rm -rf /tmp/verbose-robot
 COPY dist/*.tar.gz /tmp/verbose-robot.tar.gz
 RUN mkdir /tmp/verbose-robot
 RUN cd /tmp && tar -zxvf /tmp/verbose-robot.tar.gz --strip-components=1 -C /tmp/verbose-robot
-#COPY * -R /tmp/verbose-robot
-#RUN cd /tmp && git clone https://github.com/csirtgadgets/verbose-robot
 
 WORKDIR /tmp/verbose-robot
 
 RUN easy_install distribute
-# latest master
 RUN pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
 RUN pip3 install -r requirements.txt
 RUN python3 setup.py install
 
-#RUN dpkg-remove build-essential sudo
 RUN rm -rf /tmp/verbose-robot
 
 RUN useradd cif
@@ -47,5 +43,6 @@ COPY rules/* /etc/cif/rules/default/
 WORKDIR /home/cif
 
 COPY docker/tokens.sh /home/cif/
+COPY helpers/test.sh /home/cif/
 
-ENTRYPOINT ["/entrypoint", "-n"]
+ENTRYPOINT /entrypoint -n
