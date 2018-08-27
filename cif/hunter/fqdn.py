@@ -6,7 +6,7 @@ ENABLED = os.getenv('CIF_HUNTER_ADVANCED', True)
 
 
 def process(i):
-    if not ENABLED or not i.is_fqdn:
+    if not ENABLED or not i.is_fqdn():
         return
 
     if 'pdns' in i.tags:
