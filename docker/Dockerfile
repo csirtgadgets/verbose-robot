@@ -1,26 +1,27 @@
-FROM ubuntu:16.04
+#FROM ubuntu:16.04
+FROM python:3.6-slim-stretch
 LABEL developer="Wes Young <wes@csirtgadgets.com>"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-EXPOSE 5000
+RUN echo "deb http://http.debian.net/debian/ stretch main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb http://http.debian.net/debian/ stretch-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb http://security.debian.org/ stretch/updates main contrib non-free" >> /etc/apt/sources.list
 
-COPY docker/entrypoint /
-COPY docker/GeoIP.conf /etc/
-COPY docker/supervisord.conf /usr/local/etc/supervisord.conf
 RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections
 
-RUN apt-get update
-RUN apt-get install -y geoipupdate python3-dev python3-pip python-setuptools python-pip build-essential git sudo \
-    resolvconf curl vim mlocate sqlite3 htop tcpdump
+# https://hackernoon.com/tips-to-reduce-docker-image-sizes-876095da3b34
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends geoipupdate resolvconf sqlite3 libmagic-dev build-essential
+#RUN apt-get install htop tcpdump curl vim mlocate git
 RUN pip3 install pip --upgrade
 
-RUN geoipupdate -v
+COPY docker/GeoIP.conf /etc/
 
-RUN rm -rf /tmp/verbose-robot
 COPY dist/*.tar.gz /tmp/verbose-robot.tar.gz
-RUN mkdir /tmp/verbose-robot
-RUN cd /tmp && tar -zxvf /tmp/verbose-robot.tar.gz --strip-components=1 -C /tmp/verbose-robot
+RUN mkdir /tmp/verbose-robot \
+    && cd /tmp \
+    && tar -zxvf /tmp/verbose-robot.tar.gz --strip-components=1 -C /tmp/verbose-robot
 
 WORKDIR /tmp/verbose-robot
 
@@ -37,12 +38,20 @@ VOLUME /etc/cif/rules/default
 VOLUME /var/lib/cif
 VOLUME /var/lib/fm
 VOLUME /var/log/cif
+VOLUME /home/cif
 
 COPY rules/* /etc/cif/rules/default/
 
 WORKDIR /home/cif
 
 COPY docker/tokens.sh /home/cif/
+COPY docker/stage.sh /home/cif/
 COPY helpers/test.sh /home/cif/
+
+EXPOSE 5000
+COPY docker/supervisord.conf /usr/local/etc/supervisord.conf
+COPY docker/entrypoint /
+
+#RUN apt-get clean && dpkg -r build-essential && rm -rf /root/.cache && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT /entrypoint -n

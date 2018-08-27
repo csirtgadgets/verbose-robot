@@ -17,4 +17,7 @@ chmod -R 660 /etc/cif/rules
 chmod 770 /etc/cif/rules
 chmod 770 /etc/cif/rules/default
 
+echo 'updating geoip'
+geoipupdate -v
+
 /usr/local/bin/supervisord -n -c /usr/local/etc/supervisord.conf

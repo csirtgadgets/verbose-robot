@@ -28,7 +28,7 @@ websocket-client>=0.44,<1
 lxml<4.0
 pyyaml
 
-csirtg_indicator>=2.0a4,<3.0
+csirtg_indicator>=2.0a12,<3.0
 
 tensorflow==1.8
 csirtg-urlsml-tf
