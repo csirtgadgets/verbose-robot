@@ -19,6 +19,9 @@ def process(i):
 
     for r in i.rdata:
         ip = i.copy(**{'indicator': r, 'last_at': arrow.utcnow()})
+        if ip is None:
+            continue
+
         ip.rdata = [i.indicator]
         ip.fqdn_resolve()
         ip.geo_resolve()
@@ -40,6 +43,9 @@ def process(i):
             'mx': None,
             'rdata': None
         })
+        if i2 is None:
+            continue
+
         i2.fqdn_resolve()
         i2.geo_resolve()
 
@@ -55,6 +61,8 @@ def process(i):
             'mx': None,
             'rdata': None
         })
+        if i2 is None:
+            continue
         i2.fqdn_resolve()
         i2.geo_resolve()
 
@@ -69,6 +77,8 @@ def process(i):
             'mx': None,
             'rdata': None
         })
+        if i2 is None:
+            continue
         i2.fqdn_resolve()
         i2.geo_resolve()
 
