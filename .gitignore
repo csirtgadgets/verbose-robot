@@ -1,4 +1,5 @@
 .pytest_cache/
+cifv4.db
 *.gexf
 *.gpickle
 .DS_Store

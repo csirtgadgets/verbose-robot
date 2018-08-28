@@ -16,7 +16,7 @@ from networkx.readwrite import json_graph
 
 from csirtg_indicator import resolve_itype
 from cifsdk.exceptions import InvalidSearch
-from cifsdk.constants import VALID_FILTERS, PYVERSION
+from cifsdk.constants import VALID_FILTERS, PYVERSION, RUNTIME_PATH
 from cif.store.plugin.indicator import IndicatorManagerPlugin
 
 from cif.store.sqlite.dtypes.ip import Ip
@@ -31,8 +31,11 @@ if PYVERSION > 2:
 REQUIRED_FIELDS = ['provider', 'indicator', 'tags', 'group', 'itype']
 HASH_TYPES = ['sha1', 'sha256', 'sha512', 'md5']
 
-GRAPH_PATH = os.getenv('CIF_STORE_GRAPH_PATH', 'cifv4.gpickle')
-GRAPH_GEXF_PATH = os.getenv('CIF_STORE_GRAPH_GEXF_PATH', 'cifv4.gexf')
+GRAPH_PATH = os.path.join(RUNTIME_PATH, 'cifv4.gpickle')
+GRAPH_PATH = os.getenv('CIF_STORE_GRAPH_PATH', GRAPH_PATH)
+
+GRAPH_GEXF_PATH = os.path.join(RUNTIME_PATH, 'cifv4.gexf')
+GRAPH_GEXF_PATH = os.getenv('CIF_STORE_GRAPH_GEXF_PATH', GRAPH_GEXF_PATH)
 
 Base = declarative_base()
 
