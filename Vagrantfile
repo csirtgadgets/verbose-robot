@@ -10,39 +10,40 @@ cd /vagrant
 
 DEBIAN_FRONTEND=noninteractive
 
-echo "deb http://http.debian.net/debian/ stretch main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://http.debian.net/debian/ stretch-updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://security.debian.org/ stretch/updates main contrib non-free" >> /etc/apt/sources.list
-
 echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections
 
-# https://hackernoon.com/tips-to-reduce-docker-image-sizes-876095da3b34
-apt-get update \
-  && apt-get install -y --no-install-recommends python3-dev python-pip3 geoipupdate resolvconf sqlite3 libmagic-dev build-essential
+# https://blog.jetbrains.com/pycharm/2017/12/developing-in-a-vm-with-vagrant-and-ansible/
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 8CF63AD3F06FC659
+add-apt-repository 'deb http://ppa.launchpad.net/jonathonf/python-3.6/ubuntu xenial main'
 
-pip3 install pip --upgrade
+apt-get update \
+  && apt-get install -y --no-install-recommends python3.6 python3.6-dev python3-pip python-setuptools geoipupdate \
+  resolvconf sqlite3 libmagic-dev build-essential python3-setuptools htop tcpdump
+
+ln -sf /usr/bin/python3.6 /usr/local/bin/python3
+
+wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py
+python3.6 /tmp/get-pip.py
 
 cp docker/GeoIP.conf /etc/
-
-cp dist/*.tar.gz /tmp/verbose-robot.tar.gz
-mkdir /tmp/verbose-robot \
-  && cd /tmp \
-  && tar -zxvf /tmp/verbose-robot.tar.gz --strip-components=1 -C /tmp/verbose-robot
-
-cd /tmp/verbose-robot
 
 easy_install distribute
 pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
 pip3 install -r requirements.txt
 python3 setup.py install
 
-rm -rf /tmp/verbose-robot
-
 useradd cif
 
-cp rules/* /etc/cif/rules/default/
-cp docker/tokens.sh /home/cif/
-cp helpers/test.sh /home/cif/
+mkdir -p /home/cif
+mkdir -p /var/lib/cif
+mkdir -p /var/log/cif
+mkdir -p /var/lib/fm
+mkdir -p /etc/cif/rules/default
+
+cp /vagrant/docker/supervisord.conf /usr/local/etc/
+cp /vagrant/rules/* /etc/cif/rules/default/
+cp /vagrant/docker/tokens.sh /home/cif/
+cp /vagrant/helpers/test_vagrant.sh /home/cif/test.sh
 
 geoipupdate -v
 
@@ -72,7 +73,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.box = 'ubuntu/xenial64'
 
-  #config.vm.network :forwarded_port, guest: 443, host: 8443
+  config.vm.network :forwarded_port, guest: 5000, host: 5000
 
   config.vm.provider :virtualbox do |vb|
     vb.customize ["modifyvm", :id, "--cpus", "2", "--ioapic", "on", "--memory", "2048" ]
