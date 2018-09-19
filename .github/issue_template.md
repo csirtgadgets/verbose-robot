@@ -13,4 +13,4 @@
 
 # Specifications like the version of the project, operating system, or hardware.
 
-# How large is your database? (/var/lib/cif.db)
+# How large is your /var/lib/cif.db database?
