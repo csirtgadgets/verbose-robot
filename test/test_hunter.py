@@ -31,6 +31,7 @@ def test_hunter_plugins():
 
     indicators.append(Indicator('csirtgadgets.com', tags=['botnet']))
     indicators.append(Indicator('gfycat.com', tags=['exploit']))
+    indicators.append(Indicator('http://csirtgadgets.com', tags=['botnet']))
 
     for p in plugins:
         rv = p.process(next(i for i in indicators))
