@@ -266,6 +266,15 @@ class Store(MyProcess):
             self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
 
     def _check_indicator(self, i, t):
+        if not i.get('group'):
+            i['group'] = t['groups'][0]
+
+        if not i.get('provider'):
+            i['provider'] = t['username']
+
+        if not i.get('tags'):
+            i['tags'] = 'suspicious'
+
         for e in REQUIRED_ATTRIBUTES:
             if not i.get(e):
                 raise ValueError('missing %s' % e)

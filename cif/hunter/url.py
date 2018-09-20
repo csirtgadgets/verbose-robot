@@ -6,7 +6,7 @@ logger = logging.getLogger('cif_hunter')
 
 
 def process(i):
-    if not i.is_url:
+    if not i.is_url():
         return
 
     u = urlparse(i.indicator)
