@@ -3,15 +3,29 @@ from setuptools import setup, find_packages
 import versioneer
 import sys
 
-if sys.version_info < (3, 5):
+ENABLE_INSTALL = os.getenv('CIF_ENABLE_INSTALL')
+
+if sys.version_info < (3, 6):
     print("\n")
-    print("This requires python 3.5 or higher")
+    print("This requires python 3.6 or higher")
     print("\n")
     raise SystemExit
 
 # vagrant doesn't appreciate hard-linking
 if os.environ.get('USER') == 'vagrant' or os.path.isdir('/vagrant'):
     del os.link
+
+if sys.argv[-1] == 'install':
+    if not ENABLE_INSTALL:
+        print('')
+        print('CIFv4 Should NOT be installed using traditional install methods')
+        print('Please see the Wiki and use the EasyButton')
+        print('the EasyButton uses Ansible to customize the underlying OS and all the moving parts..')
+        print('')
+        print('https://github.com/csirtgadgets/verbose-robot/wiki')
+        print('')
+        raise SystemError
+
 
 # https://www.pydanny.com/python-dot-py-tricks.html
 if sys.argv[-1] == 'test':
@@ -48,10 +62,7 @@ setup(
     author="Wes Young",
     author_email="wes@csirtgadgets.com",
     packages=find_packages(),
-    install_requires=[
-        'Flask',
-        'ujson',
-    ],
+    install_requires=[],
     scripts=[],
     entry_points={
         'console_scripts': [

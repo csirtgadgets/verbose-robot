@@ -1,4 +1,3 @@
-#FROM ubuntu:16.04
 FROM python:3.6-slim-stretch
 LABEL developer="Wes Young <wes@csirtgadgets.com>"
 
@@ -28,7 +27,7 @@ WORKDIR /tmp/verbose-robot
 RUN easy_install distribute
 RUN pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
 RUN pip3 install -r requirements.txt
-RUN python3 setup.py install
+RUN CIF_ENABLE_INSTALL=1 python3 setup.py install
 
 RUN rm -rf /tmp/verbose-robot
 

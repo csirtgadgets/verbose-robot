@@ -17,6 +17,7 @@ before_install:
   - echo 'LicenseKey 000000000000' | sudo tee -a /etc/GeoIP.conf > /dev/null
   - echo 'ProductIds GeoLite2-Country GeoLite2-City GeoLite2-ASN' | sudo tee -a /etc/GeoIP.conf > /dev/null
   - sudo geoipupdate -v
+  - sudo apt-get install shellcheck
 
 install:
   - pip install pip --upgrade
@@ -27,6 +28,8 @@ install:
 script:
   - python setup.py test
   - python setup.py sdist bdist bdist_wheel
+  - shellcheck -x deployment/easybutton.sh
+  - shellcheck -x deployment/ubuntu16/bootstrap.sh
 
 notifications:
   email:

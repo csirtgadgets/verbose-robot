@@ -24,8 +24,9 @@ cp /vagrant/docker/GeoIP.conf /etc/
 cd /vagrant
 easy_install distribute
 pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
-pip3 install -r requirements.txt
-python3 setup.py install
+pip3 install -r dev_requirements.txt
+python3 setup.py test
+CIF_ENABLE_INSTALL=1 python3 setup.py install
 
 useradd cif
 
