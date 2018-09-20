@@ -10,6 +10,8 @@ import time
 from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index, func
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_utils.types.url import URLType
+from sqlalchemy_utils.types.email import EmailType
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -20,10 +22,8 @@ from cifsdk.constants import VALID_FILTERS, PYVERSION, RUNTIME_PATH
 from cif.store.plugin.indicator import IndicatorManagerPlugin
 
 from cif.store.sqlite.dtypes.ip import Ip
-from cif.store.sqlite.dtypes.fqdn import Fqdn
-from cif.store.sqlite.dtypes.url import Url
-from cif.store.sqlite.dtypes.hash import Hash
-from cif.store.sqlite.dtypes.email import Email
+from cif.store.sqlite.dtypes.fqdn import FQDNType
+from cif.store.sqlite.dtypes.hash import HASHType
 
 if PYVERSION > 2:
     basestring = (str, bytes)
@@ -173,7 +173,7 @@ class Fqdn(Base):
     __tablename__ = 'indicators_fqdn'
 
     id = Column(Integer, primary_key=True)
-    fqdn = Column(Fqdn, index=True)
+    fqdn = Column(FQDNType, index=True)
 
     indicator_id = Column(Integer, ForeignKey('indicators.id', ondelete='CASCADE'))
     indicator = relationship(
@@ -185,7 +185,7 @@ class Email(Base):
     __tablename__ = 'indicators_email'
 
     id = Column(Integer, primary_key=True)
-    email = Column(Email, index=True)
+    email = Column(EmailType, index=True)
 
     indicator_id = Column(Integer, ForeignKey('indicators.id', ondelete='CASCADE'))
     indicator = relationship(
@@ -197,7 +197,7 @@ class Url(Base):
     __tablename__ = 'indicators_url'
 
     id = Column(Integer, primary_key=True)
-    url = Column(Url, index=True)
+    url = Column(URLType, index=True)
 
     indicator_id = Column(Integer, ForeignKey('indicators.id', ondelete='CASCADE'))
     indicator = relationship(
@@ -209,7 +209,7 @@ class Hash(Base):
     __tablename__ = 'indicators_hash'
 
     id = Column(Integer, primary_key=True)
-    hash = Column(Hash, index=True)
+    hash = Column(HASHType, index=True)
 
     indicator_id = Column(Integer, ForeignKey('indicators.id', ondelete='CASCADE'))
     indicator = relationship(
