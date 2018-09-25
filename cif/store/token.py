@@ -60,19 +60,19 @@ class TokenHandler(object):
         logger.info('admin token created: {}'.format(rv['token']))
         return rv['token']
 
-    def token_create_smrt(self, token=None, groups=GROUPS):
-        logger.info('testing for smrt tokens...')
-        if self.store.tokens.smrt_exists():
-            logger.info('smrt token exists...')
+    def token_create_fm(self, token=None, groups=GROUPS):
+        logger.info('testing for fm tokens...')
+        if self.store.tokens.fm_exists():
+            logger.info('fm token exists...')
             return
 
         rv = self.store.tokens.create({
-            'username': u'csirtg-smrt',
+            'username': u'csirtg-fm',
             'groups': groups,
             'write': u'1',
             'token': token
         })
-        logger.info('smrt token created: {}'.format(rv['token']))
+        logger.info('fm token created: {}'.format(rv['token']))
         return rv['token']
 
     def token_create_hunter(self, token=None, groups=GROUPS):
