@@ -24,14 +24,6 @@ export CIF_TOKEN=#{cif_token}
 cd /vagrant/deploymentkit
 
 bash easybutton.sh
-
-RUN_TESTS="#{RUN_TESTS}"
-
-if [ "${RUN_TESTS}" == "" ]; then
-    echo 'skipping tests..'
-else
-    #bash /home/cif/test.sh
-fi
 SCRIPT
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
