@@ -1,8 +1,14 @@
 #!/bin/bash
 
-CIF_TOKEN=`head -n 25000 /dev/urandom | openssl dgst -sha256`
+set -e
 
-echo "CIF Token Generated:"
+if [ "${CIF_TOKEN}" == "" ]; then
+    CIF_TOKEN=`head -n 25000 /dev/urandom | openssl dgst -sha256`
+    echo "CIF_TOKEN Generated"
+else
+    echo "Using existing ENV CIF_TOKEN"
+fi
+
 echo ""
 echo "${CIF_TOKEN}"
 echo ""
