@@ -69,6 +69,7 @@ class Router(object):
         self.context = zmq.Context()
 
         self._init_store(store_address, store_type, nodes=store_nodes)
+        time.sleep(5)
 
         self.gatherers = []
         self._init_gatherers(gatherer_threads)
