@@ -49,6 +49,6 @@ EXPOSE 5000
 COPY docker/supervisord.conf /usr/local/etc/supervisord.conf
 COPY docker/entrypoint /
 
-#RUN apt-get clean && dpkg -r build-essential && rm -rf /root/.cache && rm -rf /var/lib/apt/lists/*
+RUN apt-get clean && dpkg -r build-essential && rm -rf /root/.cache && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT /entrypoint -n
