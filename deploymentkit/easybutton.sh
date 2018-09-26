@@ -23,7 +23,7 @@ else
 fi
 
 # archive old versions
-bash helpers/archive_old_versions.sh
+bash archive_old_versions.sh
 
 if [ -f /etc/lsb-release ]; then
     # shellcheck disable=SC1091
@@ -51,7 +51,7 @@ fi
 case $OS in
     "Ubuntu" )
     	if [ "$VER" == "16.04" ]; then
-    	    cd helpers/ubuntu16
+    	    cd ubuntu16
     	    bash bootstrap.sh
     	else
     	    echo "Currently only 16.04 LTS (Server) is supported"

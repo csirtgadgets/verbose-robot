@@ -1,10 +1,10 @@
 .pytest_cache/
+verbose-robot-ansible/
+deploymentkit/roles/*
 cifv4.db
 *.gexf
 *.gpickle
 .DS_Store
-cif-ansible-role/*
-deploymentkit/*
 Vagrantfile_*
 Vagrantfile\.*
 Dockerfile\.*

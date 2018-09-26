@@ -2,11 +2,6 @@
 
 set -e
 
-chmod 770 /home/cif/tokens.sh
-chmod 770 /home/cif/test.sh
-
-/home/cif/tokens.sh
-
 chown -R cif:cif /var/lib/cif
 chown -R cif:cif /var/log/cif
 chown -R cif:cif /var/lib/fm
@@ -19,5 +14,7 @@ chmod 770 /etc/cif/rules/default
 
 echo 'updating geoip'
 geoipupdate -v
+
+/etc/init.d/cron start
 
 /usr/local/bin/supervisord -n -c /usr/local/etc/supervisord.conf
