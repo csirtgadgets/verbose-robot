@@ -1,0 +1,24 @@
+[Unit]
+Description=csirtg-fm service
+
+[Service]
+Type=simple
+User={{ fm_user | default(fm.user) }}
+Group={{ fm_group | default(fm.group) }}
+PIDFile=/run/csirtg-fm.pid
+RuntimeDirectory=fm
+ExecStart={{ router_bin_path | default ('/usr/local/bin') }}/csirtg-fm --remember --service --client cif
+KillMode=process
+Restart=on-failure
+KillSignal=SIGINT
+TimeoutStopSec=15
+LimitAS=infinity
+LimitRSS=infinity
+LimitCORE=infinity
+LimitNOFILE=65536
+Nice=-1
+
+EnvironmentFile=-/etc/fm.env
+
+[Install]
+WantedBy=multi-user.target

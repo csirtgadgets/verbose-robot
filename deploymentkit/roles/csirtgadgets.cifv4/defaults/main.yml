@@ -1,0 +1,36 @@
+---
+
+cif:
+  release_url: "https://github.com/csirtgadgets/verbose-robot/archive"
+
+fm:
+  user: "{{ cif_user }}"
+  group: "{{ cif_group }}"
+  home: "{{ cif_home }}"
+  runtime_path: /var/run/fm
+  cache_path: /var/lib/fm
+  data_path: /var/lib/fm
+  rules_path: /etc/cif/rules
+  enable_service: true
+  service_client: cif
+  config_path: '/etc/cif/csirtg-fm.yml'
+
+router:
+  user: "{{ cif_user }}"
+  group: "{{ cif_group }}"
+  home: "/home/{{ cif_user }}"
+  runtime_path: "/var/run/{{ cif_user }}"
+  etc_path: '/etc/cif'
+  config_path: "{{ cif_etc_path }}/cif-router.yml"
+  data_path: "/var/lib/{{ cif_user }}"
+
+  httpd:
+    fireball_size: 500
+    listen: 127.0.0.1
+
+  hunter:
+    exclude: 'osint.bambenekconsulting.com:dga'
+    threads: 0
+
+  gatherer:
+    threads: 2

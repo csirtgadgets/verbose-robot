@@ -1,0 +1,31 @@
+---
+
+- name: Ensure paths exists
+  file: path="{{ item }}" state=directory mode=770 owner="{{ router_user | default(router.user) }}" group="{{ router_group | default(router.group) }}"
+  with_items:
+    - "{{ router_runtime_path | default(router.runtime_path) }}"
+    - "{{ router_etc_path | default(router.etc_path) }}"
+    - "{{ router_data_path | default(router.data_path) }}"
+
+- name: 'create cif sqlite db'
+  file: path={{ router_data_path | default(router.data_path) }}/cif.db owner={{ router_user | default(router.user) }} group={{ router_group | default(router.group) }} mode=0660 state=touch
+  when: router_store_store is undefined or router_store_store == 'sqlite'
+
+- name: 'make sure gunicorn logging paths exist'
+  file: path="/var/log/gunicorn" state=directory mode=770 owner="{{ router_user | default(router.user) }}" group="{{ router_group | default(router.group) }}"
+
+- name: copy /etc/defaults/cif
+  template: src=router/defaults.j2 dest=/etc/default/cif mode=0660 owner="{{ router_user | default(router.user) }}" group="{{ router_group | default(router.group) }}"
+
+- name: systemd env file
+  template: src=router/cif.env.j2 dest=/etc/cif.env mode=0660 owner="{{ router_user | default(router.user) }}" group="{{ router_group | default(router.group) }}"
+
+- name: copy cif-router.yml
+  template: src=router/cif_router.yml.j2 dest="{{ router_config_path | default(router.config_path) }}" mode=0660 owner="{{ router_user | default(router.user) }}" group="{{ router_group | default(router.group) }}"
+  when: router_hunter_token is defined and router_hunter_token != ""
+
+- name: profile
+  template: src=router/cifrc.j2 dest="{{ cif_home | default(router.home) }}/.cifrc" mode=0660 owner="{{ cif_user | default(router.user) }}" group="{{ cif_group | default(router.group) }}"
+
+- name: Ensure .cifrc is linked to .profile
+  lineinfile: dest="{{ cif_home | default(router.home) }}/.profile" line=". ~/.cifrc"

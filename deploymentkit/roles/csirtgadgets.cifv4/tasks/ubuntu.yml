@@ -1,0 +1,53 @@
+---
+- name: "Check for version 16.04"
+  fail: msg="Must be version 16.04"
+  when: ansible_distribution_version is version_compare('16.04', '<')
+
+- name: "Check for version 16.04"
+  fail: msg="Must be version 16.04"
+  when: ansible_distribution_version is version_compare('17', '>=')
+
+- name: Add apt HTTPS support
+  apt: name="{{ item }}" state=present
+  with_items:
+    - apt-transport-https
+    - ca-certificates
+
+- name: Add an apt key by id from a keyserver
+  apt_key:
+    keyserver: keyserver.ubuntu.com
+    id: 8CF63AD3F06FC659
+
+- apt_repository:
+    repo: deb http://ppa.launchpad.net/jonathonf/python-3.6/ubuntu xenial main
+    state: present
+
+- name: Update apt cache if needed.
+  apt: update_cache=yes cache_valid_time=3600 upgrade=yes
+
+- name: install deps
+  apt:
+    state: latest
+    pkg: "{{ item }}"
+    install_recommends: no
+  with_items:
+    - build-essential
+    - python3.6
+    - python3.6-dev
+    - python3-pip
+    - python3-setuptools
+    - python-setuptools
+    - sqlite3
+    - geoipupdate
+    - libgeoip-dev
+    - iotop
+    - htop
+
+- name: create python36 links
+  file: src=/usr/bin/python3.6 dest=/usr/local/bin/python3 state=link
+
+- name: get pip36
+  get_url: url=https://bootstrap.pypa.io/get-pip.py dest=/tmp/get-pip.py
+
+- name: install pip36
+  command: python3 /tmp/get-pip.py

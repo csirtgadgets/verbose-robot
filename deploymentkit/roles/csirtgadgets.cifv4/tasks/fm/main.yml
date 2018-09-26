@@ -1,0 +1,6 @@
+---
+- import_tasks: tokens.yml
+- import_tasks: paths.yml
+- import_tasks: rules.yml
+- import_tasks: services.yml
+  when: NO_SERVICES is undefined or NO_SERVICES == 'no'

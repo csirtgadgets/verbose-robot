@@ -1,0 +1,20 @@
+---
+
+- name: Ensure paths exists
+  file: path="{{ item }}" state=directory mode=750 owner="{{ fm_user | default(fm.user) }}" group="{{ fm_group | default(fm.group) }}"
+  with_items:
+    - "{{ fm_runtime_path | default(fm.runtime_path) }}"
+    - "{{ fm_rules_path | default(fm.rules_path) }}/default"
+    - "{{ fm_cache_path | default(fm.cache_path) }}"
+
+- name: copy /etc/defaults/fm
+  template: src=fm/defaults.j2 dest=/etc/default/fm mode=0660 owner="{{ fm_user | default(fm.user) }}" group="{{ fm_group | default(fm.group) }}"
+
+- name: systemd env file
+  template: src=fm/fm.env.j2 dest=/etc/fm.env mode=0660 owner="{{ fm_user | default(fm.user) }}" group="{{ fm_group | default(fm.group) }}"
+
+- name: profile
+  template: src=fm/fmrc.j2 dest="{{ fm_home | default(fm.home) }}/.fmrc" mode=0660 owner="{{ fm_user | default(fm.user) }}" group="{{ fm_group | default(fm.group) }}"
+
+- name: Ensure .fmrc is linked to .profile
+  lineinfile: dest="{{ cif_home }}/.profile" line=". ~/.fmrc"

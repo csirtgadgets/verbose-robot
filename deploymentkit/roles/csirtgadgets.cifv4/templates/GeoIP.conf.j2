@@ -1,0 +1,10 @@
+# Please see http://dev.maxmind.com/geoip/geoipupdate/ for instructions
+# on setting up geoipupdate, including information on how to download a
+# pre-filled GeoIP.conf file.
+
+# The following UserId and LicenseKey are required placeholders:
+
+UserId {{ geoip_user | default("999999") }}
+LicenseKey {{ geoip_key | default("000000000000") }}
+ProductIds {{ geoip_products | default("GeoLite2-City GeoLite2-Country GeoLite2-ASN") }}
+DatabaseDirectory {{ geoip_directory | default("/usr/local/share/GeoIP") }}

@@ -1,0 +1,11 @@
+---
+- name: copy csirtg-fm rules
+  shell: "cp -r {{ DIST_BUILD_PATH }}/rules/*.yml {{ fm_rules_path | default(fm.rules_path) }}/default/"
+
+- name: Update rule permissions
+  file:
+    path: "{{ fm_rules_path | default(fm.rules_path) }}/default"
+    mode: u=rwX,g=rwX,o=
+    recurse: yes
+    owner: "{{ fm_user | default(fm.user) }}"
+    group: "{{ fm_group | default(fm.group) }}"

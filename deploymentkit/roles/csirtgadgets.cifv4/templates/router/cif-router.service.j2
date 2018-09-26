@@ -1,0 +1,25 @@
+[Unit]
+Description=cif-router service
+
+[Service]
+Type=simple
+User={{ router_user | default(router.user) }}
+User={{ router_user | default(router.user) }}
+RuntimeDirectory=cif
+PIDFile={{ router_runtime_path | default(router.runtime_path) }}/cif_router.pid
+ExecStart={{ router_bin_path | default ('/usr/local/bin') }}/cif-router --config={{ router_config_path | default(router.config_path) }}
+KillMode=process
+Restart=on-failure
+KillSignal=SIGINT
+TimeoutStopSec=15
+LimitAS=infinity
+LimitRSS=infinity
+LimitCORE=infinity
+LimitNOFILE=65536
+Nice=-1
+
+# https://coreos.com/os/docs/latest/using-environment-variables-in-systemd-units.html
+EnvironmentFile=-/etc/cif.env
+
+[Install]
+WantedBy=multi-user.target

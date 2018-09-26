@@ -1,0 +1,11 @@
+if [ -f /etc/default/fm ] ; then
+	. /etc/default/fm
+fi
+
+export CSIRTG_FM_RUNTIME_PATH="$CSIRTG_SMRT_RUNTIME_PATH"
+export CSIRTG_FM_RULES_PATH="$CSIRTG_SMRT_RULES_PATH"
+export CSIRTG_FM_CACHE_PATH="$CSIRTG_SMRT_CACHE_PATH"
+
+export CIF_TOKEN="$CIF_TOKEN"
+export CIF_REMOTE="$CIF_REMOTE"
+export CSIRTG_TOKEN="$CSIRTG_TOKEN"

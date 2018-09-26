@@ -1,0 +1,8 @@
+---
+- user: name="{{ cif_user }}" shell=/bin/bash append=yes
+
+- name: Ensure path has correct permissions
+  file: path={{ cif_home }} owner={{ cif_user }} group={{ cif_group }} mode=0750
+
+- name: Ensure user has a .profile
+  file: path="{{ cif_home }}/.profile" state=touch owner={{ cif_user }} group={{ cif_group }} mode=0660

@@ -1,0 +1,11 @@
+---
+- name: install requirements
+  command: pip3 install -r dev_requirements.txt chdir={{ DIST_BUILD_PATH }}
+
+- name: run tests
+  command: python3 setup.py test chdir={{ DIST_BUILD_PATH }}
+
+- name: install cif
+  command: python3 setup.py install chdir={{ DIST_BUILD_PATH }}
+  environment:
+    CIF_ENABLE_INSTALL: 1

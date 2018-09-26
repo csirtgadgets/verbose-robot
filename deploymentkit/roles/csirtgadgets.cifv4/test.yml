@@ -1,0 +1,17 @@
+---
+- hosts: all
+
+  vars_files:
+    - defaults/main.yml
+    - vars/main.yml
+
+  vars:
+    router_hunter_token: '1234'
+#    fm_cif_remote: https://localhost
+#    fm_cif_token: '1234'
+
+#    router_enabled: false  # fm only role
+#    fm_enabled: false   # router only role
+
+  tasks:
+    - include_tasks: tasks/main.yml

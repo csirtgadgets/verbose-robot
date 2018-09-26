@@ -1,0 +1,24 @@
+---
+- name: create CIF_TOKEN
+  shell: cat /dev/urandom | head -c 512 | shasum -a 256 | awk -F ' ' '{print $1}'
+  register: cif_token_generated
+  when: CIF_TOKEN is not defined or CIF_TOKEN == ''
+
+- set_fact:
+    CIF_TOKEN: "{{ cif_token_generated.stdout }}"
+  when: CIF_TOKEN is not defined or CIF_TOKEN == ''
+
+- name: set admin token
+  shell: cif-store --token-create-admin --token "{{ CIF_TOKEN }}"
+
+- name: create CIF_HTTPD_TOKEN
+  shell: cat /dev/urandom | head -c 512 | shasum -a 256 | awk -F ' ' '{print $1}'
+  register: cif_httpd_token_generated
+  when: CIF_HTTPD_TOKEN is not defined or CIF_HTTPD_TOKEN == ''
+
+- set_fact:
+    CIF_HTTPD_TOKEN: "{{ cif_httpd_token_generated.stdout }}"
+  when: CIF_HTTPD_TOKEN is not defined or CIF_HTTPD_TOKEN == ''
+
+- name: set httpd token
+  shell: cif-store --token-create-httpd --token "{{ CIF_HTTPD_TOKEN }}"

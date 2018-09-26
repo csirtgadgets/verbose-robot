@@ -1,0 +1,13 @@
+---
+
+- name: systemd services
+  template: src=router/{{ item }}.j2 dest=/etc/systemd/system/{{ item }} owner=root group=root mode=0755
+  with_items:
+    - cif-router.service
+    - cif-httpd.service
+
+- name: enable services at boot
+  systemd: name={{ item }} enabled=yes daemon_reload=yes state=started
+  with_items:
+    - cif-router.service
+    - cif-httpd.service
