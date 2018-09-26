@@ -28,8 +28,8 @@ install:
 script:
   - python setup.py test
   - python setup.py sdist bdist bdist_wheel
-  - shellcheck -x deployment/easybutton.sh
-  - shellcheck -x deployment/ubuntu16/bootstrap.sh
+  - shellcheck -x deploymentkit/easybutton.sh
+  - shellcheck -x deploymentkit/ubuntu16/bootstrap.sh
 
 notifications:
   email:
