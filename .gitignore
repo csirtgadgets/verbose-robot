@@ -1,5 +1,6 @@
 .pytest_cache/
 verbose-robot-ansible/
+deploymentkit/roles/*
 cifv4.db
 *.gexf
 *.gpickle
