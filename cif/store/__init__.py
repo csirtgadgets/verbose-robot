@@ -275,6 +275,9 @@ class Store(MyProcess):
         if not i.get('tags'):
             i['tags'] = 'suspicious'
 
+        if not i.get('reported_at'):
+            i['reported_at'] = arrow.utcnow().datetime
+
         for e in REQUIRED_ATTRIBUTES:
             if not i.get(e):
                 raise ValueError('missing %s' % e)
