@@ -6,8 +6,11 @@ import arrow
 
 from cif.utils.predict import predict_fqdns, predict_ips, predict_urls
 from csirtg_indicator import Indicator
+import pytest
+import os
 
 fake = Faker()
+DISABLE_PREDICT_IPV4 = os.getenv('DISABLE_PREDICT_IPV4', False)
 
 
 def test_predict_ipv4():
@@ -20,7 +23,11 @@ def test_predict_ipv4():
     probs = [i.probability for i in indicators]
     avg = (sum(probs) / len(probs))
     print(avg)
-    assert 16 < avg < 93
+    if DISABLE_PREDICT_IPV4:
+        # for tests when we're not pre-loading maxmind/geoip libs
+        assert 16 < avg < 98
+    else:
+        assert 16 < avg < 93
 
 
 def test_predict_url():

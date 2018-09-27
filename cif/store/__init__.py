@@ -169,7 +169,7 @@ class Store(MyProcess):
 
         t = self.token_handler.token_create_admin()
         if t:
-            self.token_handler.token_create_smrt(token=t)
+            self.token_handler.token_create_fm(token=t)
 
         from cif.hunter import CONFIG_PATH as ROUTER_CONFIG_PATH
         if not os.path.exists(ROUTER_CONFIG_PATH):
@@ -410,8 +410,8 @@ def main():
     p.add_argument('--config', help='specify config path [default %(default)s]', default=CONFIG_PATH)
 
     p.add_argument('--token-create-admin', help='generate an admin token', action="store_true")
-    p.add_argument('--token-create-smrt', action="store_true")
-    p.add_argument('--token-create-smrt-remote', default=REMOTE_ADDR)
+    p.add_argument('--token-create-fm', action="store_true")
+    p.add_argument('--token-create-fm-remote', default=REMOTE_ADDR)
     p.add_argument('--token-create-hunter', action="store_true")
     p.add_argument('--token-create-httpd', action="store_true")
 
@@ -431,23 +431,18 @@ def main():
 
     setup_signals(__name__)
 
-    if not args.token_create_smrt and not args.token_create_admin and not args.token_create_hunter and not \
+    if not args.token_create_fm and not args.token_create_admin and not args.token_create_hunter and not \
             args.token_create_httpd:
         logger.error('missing required arguments, see -h for more information')
         raise SystemExit
 
-    if args.token_create_smrt:
+    if args.token_create_fm:
         with Store(store_type=args.store, nodes=args.nodes) as s:
             s._load_plugin(store_type=args.store, nodes=args.nodes)
 
-            t = s.token_handler.token_create_smrt(token=args.token, groups=groups)
+            t = s.token_handler.token_create_fm(token=args.token, groups=groups)
             if t:
-                if PYVERSION == 2:
-                    t = t.encode('utf-8')
-
-                data = {
-                    'token': t,
-                }
+                data = {'token': t}
                 if args.remote:
                     data['remote'] = args.remote
 
@@ -455,21 +450,15 @@ def main():
                     with open(args.config_path, 'w') as f:
                         f.write(yaml.dump(data, default_flow_style=False))
 
-                logger.info('token config generated: {}'.format(args.token_create_smrt))
+                logger.info('token config generated: {}'.format(args.token_create_fm))
             else:
                 logger.error('token not created')
 
     if args.token_create_hunter:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            #s._load_plugin(store_type=args.store, nodes=args.nodes)
             t = s.token_handler.token_create_hunter(token=args.token, groups=groups)
             if t:
-                if PYVERSION == 2:
-                    t = t.encode('utf-8')
-
-                data = {
-                    'hunter_token': t,
-                }
+                data = {'token': t}
 
                 if args.config_path:
                     with open(args.config_path, 'w') as f:
@@ -481,15 +470,9 @@ def main():
 
     if args.token_create_admin:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            s._load_plugin(store_type=args.store, nodes=args.nodes)
             t = s.token_handler.token_create_admin(token=args.token, groups=groups)
             if t:
-                if PYVERSION == 2:
-                    t = t.encode('utf-8')
-
-                data = {
-                    'token': t,
-                }
+                data = {'token': t}
 
                 if args.config_path:
                     with open(args.config_path, 'w') as f:
@@ -501,15 +484,9 @@ def main():
 
     if args.token_create_httpd:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            s._load_plugin(store_type=args.store, nodes=args.nodes)
             t = s.token_handler.token_create_httpd(token=args.token, groups=groups)
             if t:
-                if PYVERSION == 2:
-                    t = t.encode('utf-8')
-
-                data = {
-                    'token': t,
-                }
+                data = {'token': t}
 
                 if args.config_path:
                     with open(args.config_path, 'w') as f:

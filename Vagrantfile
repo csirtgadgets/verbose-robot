@@ -5,36 +5,25 @@
 VAGRANTFILE_API_VERSION = "2"
 VAGRANTFILE_LOCAL = 'Vagrantfile.local'
 
+sdist=ENV['CIF_ANSIBLE_SDIST']
+hunter_threads=ENV['CIF_HUNTER_THREADS']
+hunter_advanced=ENV['CIF_HUNTER_ADVANCED']
+csirtg_token=ENV['CSIRTG_TOKEN']
+cif_token=ENV['CIF_TOKEN']
+
 RUN_TESTS=ENV.fetch('TESTS', '')
 
 $script = <<SCRIPT
-cd /vagrant
+export CIF_ANSIBLE_SDIST=#{sdist}
+export CIF_HUNTER_THREADS=#{hunter_threads}
+export CIF_HUNTER_ADVANCED=#{hunter_advanced}
+export CIF_BOOTSTRAP_TEST=1
+export CSIRTG_TOKEN=#{csirtg_token}
+export CIF_TOKEN=#{cif_token}
 
-RUN_TESTS="#{RUN_TESTS}"
+cd /vagrant/deploymentkit
 
-CIF_TOKEN=`head -n 25000 /dev/urandom | openssl dgst -sha256 | awk -F ' ' '{print $2}'`
-if [ "${CIF_TOKEN}" == "" ]; then
-  export CIF_TOKEN=`head -n 25000 /dev/urandom | openssl dgst -sha256`
-fi
-
-export CIF_TOKEN=${CIF_TOKEN}
-echo "#!/bin/sh" > /etc/profile.d/cif.sh
-echo "export CIF_TOKEN=${CIF_TOKEN}" >> /etc/profile.d/cif.sh
-
-bash helpers/easybutton.sh
-
-CIF_ROUTER_CONFIG_PATH=/home/cif/router.yml /usr/local/bin/supervisord -c /usr/local/etc/supervisord.conf
-sleep 10
-
-echo "token: ${CIF_TOKEN}" > /home/cif/cif.yml
-chown cif:cif /home/cif/cif.yml
-chmod 660 /home/cif/cif.yml
-
-if [ "${RUN_TESTS}" == "" ]; then
-    echo 'skipping tests..'
-else
-    bash /home/cif/test.sh
-fi
+bash easybutton.sh
 SCRIPT
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|

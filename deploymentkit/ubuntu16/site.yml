@@ -1,0 +1,30 @@
+---
+- name: configure platform
+  hosts: localhost
+  gather_facts: False
+  become: True
+
+  vars_files:
+    - "vars/main.yml"
+
+  vars:
+    - CIF_VERSION: '4.0.0a6'
+    - cif_build_sdist: "{{ lookup('env', 'CIF_ANSIBLE_SDIST') | default() }}"
+
+  pre_tasks:
+
+    - name: configure python
+      raw: sudo apt-get install python-minimal aptitude -y
+
+    - setup:
+       filter: ansible_*
+
+    - name: set build_sdist
+      set_fact:
+        cif_build_sdist: CIF_ANSIBLE_SDIST
+      when: CIF_ANSIBLE_SDIST is defined and CIF_ANSIBLE_SDIST != ""
+
+    - import_tasks: tasks/main.yml
+
+  roles:
+    - { role: csirtgadgets.cifv4 }

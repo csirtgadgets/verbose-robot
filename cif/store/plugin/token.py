@@ -53,8 +53,8 @@ class TokenManagerPlugin(object):
         if len(t) > 0:
             return t[0]['token']
 
-    def smrt_exists(self):
-        t = list(self.search({'username': 'csirtg-smrt'}))
+    def fm_exists(self):
+        t = list(self.search({'username': 'csirtg-fm'}))
         if len(t) > 0:
             return t[0]['token']
 

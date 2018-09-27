@@ -1,0 +1,9 @@
+---
+- include_tasks: firewall.yml
+  tags: firewall
+
+- include_tasks: deps.yml
+  tags: deps
+
+- include_tasks: unattended_updates.yml
+  tags: deps
