@@ -35,6 +35,9 @@ RUN rm -rf /tmp/verbose-robot
 RUN pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
 RUN pip3 install csirtgsdk
 
+RUN echo 'cif             soft    nofile            20000' >> /etc/security/limits.conf
+RUN echo 'cif             hard    nofile            30000' >> /etc/security/limits.conf
+
 RUN useradd cif
 
 VOLUME /etc/cif/rules/default
