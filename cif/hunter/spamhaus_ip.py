@@ -7,6 +7,9 @@ def process(i):
     if not ENABLED:
         return
 
+    if i.provider == 'spamhaus.org':
+        return
+
     i2 = i.spamhaus()
     if not i2:
         return

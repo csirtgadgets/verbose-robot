@@ -16,5 +16,6 @@ echo 'updating geoip'
 geoipupdate -v
 
 /etc/init.d/cron start
+/etc/init.d/bind9 start
 
 /usr/local/bin/supervisord -n -c /usr/local/etc/supervisord.conf

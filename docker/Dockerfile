@@ -12,10 +12,11 @@ RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-
 # https://hackernoon.com/tips-to-reduce-docker-image-sizes-876095da3b34
 RUN apt-get update \
     && apt-get install -y --no-install-recommends geoipupdate resolvconf sqlite3 libmagic-dev build-essential procps \
-    cron
+    cron bind9
 
 COPY docker/GeoIP.conf /etc/
 COPY docker/cron_restart.sh /etc/cron.weekly/cif_restart.sh
+COPY docker/cron_geoip.sh /etc/cron.monthly/geoip_update.sh
 
 COPY dist/*.tar.gz /tmp/verbose-robot.tar.gz
 RUN mkdir /tmp/verbose-robot \
@@ -32,6 +33,10 @@ RUN CIF_ENABLE_INSTALL=1 python3 setup.py install
 RUN rm -rf /tmp/verbose-robot
 
 RUN pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
+RUN pip3 install csirtgsdk
+
+RUN echo 'cif             soft    nofile            20000' >> /etc/security/limits.conf
+RUN echo 'cif             hard    nofile            30000' >> /etc/security/limits.conf
 
 RUN useradd cif
 

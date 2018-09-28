@@ -647,6 +647,8 @@ class IndicatorManager(IndicatorManagerPlugin):
             if d.get('rdata', '') != '' and isinstance(d['rdata'], list):
                 d['rdata'] = ','.join(d['rdata'])
 
+            self._cleanup_timestamps(d)
+
             self._insert_graph(d)
 
             tags = self._normalize_tags(d)
@@ -684,8 +686,6 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             # new record
             cached_added[d['indicator']] = set()
-
-            self._cleanup_timestamps(d)
 
             ii = Indicator(**d)
             s.add(ii)
