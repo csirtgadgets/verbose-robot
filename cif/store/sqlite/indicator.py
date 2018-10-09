@@ -459,11 +459,19 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         # group support
 
+        # if no tags are presented, users probably expect non special data in their results
+        if not myfilters.get('tags') and not myfilters.get('indicator'):
+            s = s.outerjoin(Tag)
+            s = s.filter(Tag.tag != 'pdns')
+            s = s.filter(Tag.tag != 'search')
+
+        # these functions taint myfilters...
         s = self._filter_indicator(myfilters, s)
         s = self._filter_terms(myfilters, s)
 
         if myfilters.get('groups'):
             return self._filter_groups(myfilters, None, s)
+
 
         return self._filter_groups({}, token, s)
 

@@ -3,16 +3,15 @@ import arrow
 import re
 import traceback
 import copy
-from io import StringIO
-import csv
 
 from flask_restplus import Namespace, Resource, fields
-from flask import request, session, make_response, current_app
+from flask import request, session, current_app
 
 from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, HTTPD_FEED_WHITELIST_CONFIDENCE
 from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
 from cifsdk.client.zmq import ZMQ as Client
 from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
+import zmq
 from pprint import pprint
 
 
@@ -105,6 +104,9 @@ class IndicatorList(Resource):
 
         except AuthError as e:
             return api.abort(401)
+
+        except zmq.error.Again as e:
+            return api.abort(503)
 
         except Exception as e:
             logger.error(e)
@@ -219,23 +221,23 @@ class IndicatorList(Resource):
         if 'whitelist' in tags:
             return self._pull_feed(filters), 200
 
-        feed = list(f(
+        myfeed = list(f(
             self._pull_feed(filters),
             self._pull_whitelist(filters)
         ))
 
-        feed = aggregate(feed)
+        myfeed = aggregate(myfeed)
 
         # https://github.com/noirbizarre/flask-restplus/blob/d4bd1847ae607d3c6c1b3b4fedfc6402e961b9e6/flask_restplus/api.py#L326
         if 'text/plain' in request.headers.get('Accept'):
             from csirtg_indicator.format.csv import get_lines
             csv = ''
-            for l in get_lines(feed):
+            for l in get_lines(myfeed):
                 csv += l + "\n"
 
             return csv, 200
 
-        return feed, 200
+        return myfeed, 200
 
     @api.doc('create_indicator(s)')
     @api.param('nowait', 'Submit but do not wait for a response')

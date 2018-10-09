@@ -6,12 +6,11 @@ import zmq
 import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-#import multiprocessing
 from .utils.process import MyProcess
 import os
-from pprint import pprint
 
-from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser
+from cifsdk.utils import setup_runtime_path, setup_logging
+from cif.utils import get_argument_parser
 from .constants import ROUTER_STREAM_ADDR, ROUTER_STREAM_ADDR_PUB
 
 TRACE = os.getenv('CIF_STREAMER_TRACE', False)

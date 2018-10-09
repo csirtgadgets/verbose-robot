@@ -89,6 +89,9 @@ class Hunter(MyProcess):
         poller.register(socket, zmq.POLLIN)
 
         while not self.exit.is_set():
+            data = []
+            indicators = []
+
             try:
                 s = dict(poller.poll(1000))
             except (KeyboardInterrupt, SystemExit):
@@ -131,23 +134,14 @@ class Hunter(MyProcess):
 
             for p in plugins:
                 try:
-                    rv = p.process(d)
-                    if not rv:
+                    indicators = p.process(d)
+
+                    indicators = [i.__dict__() for i in indicators]
+
+                    if len(indicators) == 0:
                         continue
 
-                    from types import GeneratorType
-                    if isinstance(rv, GeneratorType):
-                        rv = list(r for r in rv)
-
-                    if not isinstance(rv, list):
-                        rv = [rv]
-
-                    rv = [i.__dict__() for i in rv]
-
-                    if len(rv) == 0:
-                        continue
-
-                    router.indicators_create(rv)
+                    router.indicators_create(indicators)
 
                 except Exception as e:
                     logger.error(e)
