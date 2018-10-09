@@ -63,7 +63,7 @@ declare -a CMDS=(
 
 for i in "${CMDS[@]}"; do
     echo "$i"
-    docker exec -it ${MACHINE_NAME} CIF_ADVANCED=1 cif ${i}
+    docker exec -e CIF_ADVANCED=1 -it ${MACHINE_NAME} cif ${i}
 done
 
 sleep 5
