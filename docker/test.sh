@@ -68,7 +68,7 @@ done
 
 sleep 5
 
-docker exec -it ${MACHINE_NAME} CIF_ADVANCED=1 cif -nq csirtg.io
+docker exec -e CIF_ADVANCED=1 -it ${MACHINE_NAME} cif -nq csirtg.io
 
 echo
 echo
