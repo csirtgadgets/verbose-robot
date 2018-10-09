@@ -62,13 +62,13 @@ class TokenList(Resource):
             return api.abort(400)
 
     @api.doc('create_tokens')
-    @api.marshal_list_with(token, code=201, description='Token created')
+    @api.marshal_list_with(token, description='Token created')
     def post(self):
         """Create a Token"""
 
         # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_create(request.data)
+            return Client(ROUTER_ADDR, session['token']).tokens_create(request.data), 201
         except TimeoutError:
             return api.abort(408)
 

@@ -54,7 +54,7 @@ declare -a CMDS=(
     "--provider openphish.com --itype url"
     "--itype ipv4 --tags scanner"
     "--itype ipv4 --tags scanner --days 17"
-    #"--itype fqdn --tags search"
+    "--itype fqdn --tags search"
     "--itype url --tags uce"
     "--itype url --tags phishing"
     "--itype ipv4 --tags phishing --confidence 2"
@@ -67,7 +67,7 @@ declare -a CMDS=(
 
 for i in "${CMDS[@]}"; do
     echo "$i"
-   $BASE_CMD cif ${i}
+   $BASE_CMD CIF_ADVANCED=1 cif ${i}
 done
 
 

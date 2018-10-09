@@ -123,7 +123,7 @@ class Store(MyProcess):
         s = Indicator(
             indicator=data['indicator'],
             tlp='amber',
-            confidence=10,
+            confidence=5,
             tags='search',
             provider=t['username'],
             first_at=ts,
