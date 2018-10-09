@@ -440,6 +440,13 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         return s
 
+    def _filter_pdns(self, s):
+        s = s.outerjoin(Tag)
+        return s.filter(Tag.tag != 'pdns')
+
+    def _filter_searches(self, s):
+        return s.filter(Tag.tag != 'search')
+
     def _filter_groups(self, filters, token, s):
         if token:
             groups = token.get('groups', 'everyone')
@@ -461,6 +468,12 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         s = self._filter_indicator(myfilters, s)
         s = self._filter_terms(myfilters, s)
+
+        # if no tags are presented, users probably expect non special data in their results
+        if not myfilters.get('tags'):
+            s = s.outerjoin(Tag)
+            s = s.filter(Tag.tag != 'pdns')
+            s = s.filter(Tag.tag != 'search')
 
         if myfilters.get('groups'):
             return self._filter_groups(myfilters, None, s)
