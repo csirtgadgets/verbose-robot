@@ -54,7 +54,7 @@ declare -a CMDS=(
     "--provider openphish.com --itype url"
     "--itype ipv4 --tags scanner"
     "--itype ipv4 --tags scanner --days 17"
-    #"--itype fqdn --tags search"
+    "--itype fqdn --tags search"
     "--itype url --tags uce"
     "--itype url --tags phishing"
     "--itype ipv4 --tags phishing --confidence 2"
@@ -62,14 +62,16 @@ declare -a CMDS=(
     "--itype fqdn --confidence 1,4 --no-feed -d"
     "--itype fqdn --probability 68,99 --no-feed -d"
     "--indicator csirtg.io --tags malware --submit --confidence 4"
-    "-nq csirtg.io"
 )
 
 for i in "${CMDS[@]}"; do
     echo "$i"
-   $BASE_CMD cif ${i}
+   $BASE_CMD CIF_ADVANCED=1 cif ${i}
 done
 
+sleep 5
+
+CIF_ADVANCED=1 cif -nq csirtg.io
 
 echo
 echo
