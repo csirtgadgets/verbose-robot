@@ -11,9 +11,10 @@ import zmq
 import os
 
 from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
-    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR
+    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION
 from cifsdk.constants import CONFIG_PATH
-from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, setup_runtime_path
+from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path
+from cif.utils import get_argument_parser
 from cif.hunter import Hunter
 from cif.store import Store
 from cif.gatherer import Gatherer

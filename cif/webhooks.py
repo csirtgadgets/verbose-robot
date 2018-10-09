@@ -7,7 +7,6 @@ from .utils.process import MyProcess
 import os
 import yaml
 import requests
-from pprint import pprint
 
 from cif.constants import ROUTER_WEBHOOKS_ADDR
 

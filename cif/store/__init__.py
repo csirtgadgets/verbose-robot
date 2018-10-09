@@ -20,7 +20,8 @@ from cifsdk.msg import Msg
 from cif.constants import STORE_ADDR, PYVERSION
 from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
 from cifsdk.exceptions import AuthError, InvalidSearch
-from cifsdk.utils import setup_logging, get_argument_parser, setup_signals, load_plugin
+from cifsdk.utils import setup_logging, setup_signals, load_plugin
+from cif.utils import get_argument_parser
 
 from cif.utils.process import MyProcess
 import cif.store
