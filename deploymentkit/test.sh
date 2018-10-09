@@ -62,7 +62,6 @@ declare -a CMDS=(
     "--itype fqdn --confidence 1,4 --no-feed -d"
     "--itype fqdn --probability 68,99 --no-feed -d"
     "--indicator csirtg.io --tags malware --submit --confidence 4"
-    "-nq csirtg.io"
 )
 
 for i in "${CMDS[@]}"; do
@@ -70,6 +69,9 @@ for i in "${CMDS[@]}"; do
    $BASE_CMD CIF_ADVANCED=1 cif ${i}
 done
 
+sleep 5
+
+CIF_ADVANCED=1 cif -nq csirtg.io
 
 echo
 echo
