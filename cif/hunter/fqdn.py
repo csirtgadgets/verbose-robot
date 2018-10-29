@@ -29,6 +29,9 @@ def process(i):
         if i.confidence > 0:
             ip.confidence = i.confidence - 1
 
+        if not ip.description:
+            ip.description = i.tags[0]
+
         pdns = ip.copy(tags=['pdns'], confidence=4.0, rdata=[i.indicator])
 
         yield ip
