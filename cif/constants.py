@@ -21,6 +21,9 @@ STORE_ADDR = os.getenv('CIF_STORE_ADDR', STORE_ADDR)
 STORE_WRITE_ADDR = 'ipc://{}'.format(os.path.join(RUNTIME_PATH, 'store_write.ipc'))
 STORE_WRITE_ADDR = os.getenv('CIF_STORE_WRITE_ADDR', STORE_WRITE_ADDR)
 
+STORE_WRITE_H_ADDR = 'ipc://{}'.format(os.path.join(RUNTIME_PATH, 'store_write_h.ipc'))
+STORE_WRITE_H_ADDR = os.getenv('CIF_STORE_WRITE_H_ADDR', STORE_WRITE_H_ADDR)
+
 HUNTER_ADDR = 'ipc://{}'.format(os.path.join(RUNTIME_PATH, 'hunter.ipc'))
 HUNTER_ADDR = os.getenv('CIF_HUNTER_ADDR', HUNTER_ADDR)
 
