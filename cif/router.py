@@ -11,7 +11,8 @@ import zmq
 import os
 
 from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
-    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION
+    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION, \
+    STORE_WRITE_ADDR
 from cifsdk.constants import CONFIG_PATH
 from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path
 from cif.utils import get_argument_parser
@@ -144,6 +145,10 @@ class Router(object):
         logger.info('launching store...')
         self.store_s = self.context.socket(zmq.DEALER)
         self.store_s.bind(store_address)
+
+        self.store_write_s = self.context.socket(zmq.DEALER)
+        self.store_write_s.bind(STORE_WRITE_ADDR)
+
         self.store_p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
         self.store_p.start()
 
@@ -189,6 +194,7 @@ class Router(object):
 
         poller_backend.register(self.gatherer_sink_s, zmq.POLLIN)
         poller.register(self.store_s, zmq.POLLIN)
+        poller.register(self.store_write_s, zmq.POLLIN)
 
         if self.hunters:
             poller_backend.register(self.hunter_sink_s, zmq.POLLIN)
@@ -206,6 +212,9 @@ class Router(object):
 
             if self.store_s in items and items[self.store_s] == zmq.POLLIN:
                 self.handle_message_store(self.store_s)
+
+            if self.store_write_s in items and items[self.store_write_s] == zmq.POLLIN:
+                self.handle_message_store(self.store_write_s)
 
             items = dict(poller_backend.poll(BACKEND_TIMEOUT))
 
@@ -253,7 +262,7 @@ class Router(object):
     def handle_message_gatherer(self, s):
         id, token, mtype, data = Msg().recv(s)
 
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
+        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_write_s)
 
         if self.hunters is False and not ROUTER_STREAM_ENABLED and not ROUTER_WEBHOOKS_ENABLED:
             return
