@@ -8,7 +8,7 @@ export CIF_HUNTER_ADVANCED=$CIF_HUNTER_ADVANCED
 
 echo 'installing the basics'
 sudo apt-get update && apt-get install -y build-essential python-dev python2.7 python-pip python-dev aptitude \
-    python-pip libffi-dev libssl-dev software-properties-common
+    python-pip libffi-dev libssl-dev software-properties-common libmagic-dev
 
 bash ../ansible.sh
 
