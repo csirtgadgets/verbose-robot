@@ -37,7 +37,7 @@ tensorflow==1.8
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg-ipsml-tf
-csirtg_fm>=1.0a9
+csirtg-fm>=1.0a9
 #https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
 
 
