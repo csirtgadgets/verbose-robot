@@ -778,4 +778,8 @@ class IndicatorManager(IndicatorManagerPlugin):
         nx.write_gpickle(self.graph, GRAPH_PATH)
         nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
         logger.debug('done: %0.2f' % (time.time() - s1))
+
+        if n < 0:
+            return abs(n)
+
         return n

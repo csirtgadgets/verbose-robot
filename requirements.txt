@@ -21,7 +21,7 @@ networkx>=2.1
 csirtg_dnsdb==0.0.0a4
 
 # 5.x requires lxml updates
-tornado==4.5.3
+tornado==5.1.1
 
 gunicorn>=19.9
 gevent>=1.2
@@ -34,10 +34,11 @@ pyyaml
 csirtg_indicator>=2.0a12,<3.0
 
 tensorflow==1.8
+pendulum==2.0.3
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg-ipsml-tf
-csirtg_fm>=1.0a7
+csirtg-fm>=1.0a9
 #https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
 
 

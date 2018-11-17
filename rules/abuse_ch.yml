@@ -31,35 +31,6 @@ feeds:
       tags: zeus, botnet
       reference: 'https://zeustracker.abuse.ch/monitor.php?host={indicator}'
 
-  feodo_domains:
-    remote: https://feodotracker.abuse.ch/blocklist/?download=domainblocklist
-    defaults:
-      description: feodo
-      tags: feodo, botnet
-      reference: 'https://feodotracker.abuse.ch/host/{indicator}'
-
-  feodo_ips:
-    remote: https://feodotracker.abuse.ch/blocklist/?download=ipblocklist
-    defaults:
-      description: feodo
-      tags: feodo, botnet
-      reference: 'https://feodotracker.abuse.ch/host/{indicator}'
-
-  sslipblacklist:
-    remote: https://sslbl.abuse.ch/blacklist/sslipblacklist.csv
-    defaults:
-      tags: botnet
-
-  dyre_sslipblacklist:
-    remote: https://sslbl.abuse.ch/blacklist/dyre_sslipblacklist.csv
-    defaults:
-      tags: botnet, dyre
-
-  ssl_fingerprints:
-    remote: https://sslbl.abuse.ch/blacklist/sslblacklist.csv
-    defaults:
-      tags: ssl, blacklist
-
   urlhaus:
     remote: https://urlhaus.abuse.ch/downloads/csv
     defaults:

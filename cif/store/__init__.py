@@ -17,7 +17,7 @@ from base64 import b64decode
 
 from csirtg_indicator import Indicator
 from cifsdk.msg import Msg
-from cif.constants import STORE_ADDR, PYVERSION
+from cif.constants import STORE_ADDR, STORE_WRITE_ADDR, STORE_WRITE_H_ADDR
 from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cifsdk.utils import setup_logging, setup_signals, load_plugin
@@ -61,6 +61,8 @@ class Store(MyProcess):
         MyProcess.__init__(self)
 
         self.store_addr = store_address
+        self.store_write_addr = STORE_WRITE_ADDR
+        self.store_write_h_addr = STORE_WRITE_H_ADDR
         self.store = store_type
         self.kwargs = kwargs
         self.create_queue = {}
@@ -71,6 +73,8 @@ class Store(MyProcess):
         self.create_queue_count = 0
 
         self.router = None
+        self.router_write = None
+        self.router_write_h = None
         self.context = None
 
         self._load_plugin(**self.kwargs)
@@ -167,6 +171,8 @@ class Store(MyProcess):
     def start(self):
         self.context = zmq.Context()
         self.router = self.context.socket(zmq.ROUTER)
+        self.router_write = self.context.socket(zmq.ROUTER)
+        self.router_write_h = self.context.socket(zmq.ROUTER)
 
         t = self.token_handler.token_create_admin()
         if t:
@@ -179,14 +185,22 @@ class Store(MyProcess):
                 f.write('hunter_token: %s' % t)
 
         self.router.connect(self.store_addr)
+        self.router_write.connect(self.store_write_addr)
+        self.router_write_h.connect(self.store_write_h_addr)
 
         poller = zmq.Poller()
         poller.register(self.router, zmq.POLLIN)
 
+        poller_write = zmq.Poller()
+        poller_write.register(self.router_write, zmq.POLLIN)
+
+        poller_write_h = zmq.Poller()
+        poller_write_h.register(self.router_write_h, zmq.POLLIN)
+
         last_flushed = time.time()
         while not self.exit.is_set():
             try:
-                s = dict(poller.poll(1000))
+                s = dict(poller.poll(5))
             except KeyboardInterrupt:
                 break
 
@@ -198,11 +212,39 @@ class Store(MyProcess):
                     logger.error(e)
                     logger.debug(m)
 
+            try:
+                s = dict(poller_write.poll(5))
+            except KeyboardInterrupt:
+                break
+
+            if self.router_write in s:
+                m = Msg().recv(self.router_write)
+
+                try:
+                    self.handle_message(m)
+                except Exception as e:
+                    logger.error(e)
+                    logger.debug(m)
+
+            try:
+                s = dict(poller_write_h.poll(5))
+            except KeyboardInterrupt:
+                break
+
+            if self.router_write_h in s:
+                m = Msg().recv(self.router_write_h)
+
+                try:
+                    self.handle_message(m)
+                except Exception as e:
+                    logger.error(e)
+                    logger.debug(m)
+
             last_flushed = self._check_create_queue(last_flushed)
 
     def handle_message(self, m):
         err = None
-        logger.debug(m)
+        #logger.debug(m)
         id, client_id, token, mtype, data = m
 
         try:
@@ -261,7 +303,11 @@ class Store(MyProcess):
             traceback.print_exc()
             data = json.dumps({'status': 'failed', 'message': 'feed too large, retry the query'})
 
-        Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(self.router)
+        s = self.router
+        if mtype == 'indicators_create':
+            s = self.router_write
+
+        Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(s)
 
         if not err:
             self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)

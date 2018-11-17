@@ -17,7 +17,7 @@ from .indicator import Indicator, IndicatorManager
 DB_PATH = os.path.join(DATA_PATH, 'cifv4.db')
 
 logger = logging.getLogger(__name__)
-TRACE = os.environ.get('CIF_STORE_SQLITE_TRACE')
+TRACE = os.environ.get('CIF_STORE_SQLITE_TRACE', '0')
 
 # http://stackoverflow.com/q/9671490/7205341
 SYNC = os.environ.get('CIF_STORE_SQLITE_SYNC', 'NORMAL')
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
-if not TRACE:
+if TRACE == '0':
     logger.setLevel(logging.ERROR)
     logging.getLogger('sqlalchemy.engine').setLevel(logging.ERROR)
 

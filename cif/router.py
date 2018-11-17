@@ -11,9 +11,10 @@ import zmq
 import os
 
 from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
-    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION
+    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION, \
+    STORE_WRITE_ADDR, STORE_WRITE_H_ADDR
 from cifsdk.constants import CONFIG_PATH
-from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path
+from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path, settings
 from cif.utils import get_argument_parser
 from cif.hunter import Hunter
 from cif.store import Store
@@ -45,6 +46,9 @@ STORE_DEFAULT = os.getenv('CIF_STORE_STORE', STORE_DEFAULT)
 STORE_NODES = os.getenv('CIF_STORE_NODES')
 
 PIDFILE = os.getenv('CIF_ROUTER_PIDFILE', '%s/cif_router.pid' % RUNTIME_PATH)
+CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', 'router.yml')
+if not os.path.isfile(CONFIG_PATH):
+    CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', os.path.join(os.path.expanduser('~'), 'router.yml'))
 
 TRACE = os.getenv('CIF_ROUTER_TRACE')
 
@@ -67,6 +71,8 @@ class Router(object):
                  hunter_token=HUNTER_TOKEN, hunter_threads=HUNTER_THREADS, gatherer_threads=GATHERER_THREADS,
                  test=False):
 
+        self.settings = settings(CONFIG_PATH)
+
         self.context = zmq.Context()
 
         self._init_store(store_address, store_type, nodes=store_nodes)
@@ -78,6 +84,10 @@ class Router(object):
         self._init_gatherers(gatherer_threads)
 
         self.hunters = False
+        self.hunter_token = None
+        if self.settings and self.settings.get('hunter_token'):
+            self.hunter_token = self.settings['hunter_token']
+
         if hunter_threads and int(hunter_threads) > 0:
             self._init_hunters(hunter_threads, hunter_token)
 
@@ -144,6 +154,13 @@ class Router(object):
         logger.info('launching store...')
         self.store_s = self.context.socket(zmq.DEALER)
         self.store_s.bind(store_address)
+
+        self.store_write_s = self.context.socket(zmq.DEALER)
+        self.store_write_s.bind(STORE_WRITE_ADDR)
+
+        self.store_write_h_s = self.context.socket(zmq.DEALER)
+        self.store_write_h_s.bind(STORE_WRITE_H_ADDR)
+
         self.store_p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
         self.store_p.start()
 
@@ -189,6 +206,8 @@ class Router(object):
 
         poller_backend.register(self.gatherer_sink_s, zmq.POLLIN)
         poller.register(self.store_s, zmq.POLLIN)
+        poller.register(self.store_write_s, zmq.POLLIN)
+        poller.register(self.store_write_h_s, zmq.POLLIN)
 
         if self.hunters:
             poller_backend.register(self.hunter_sink_s, zmq.POLLIN)
@@ -205,7 +224,13 @@ class Router(object):
                 self.handle_message(self.frontend_s)
 
             if self.store_s in items and items[self.store_s] == zmq.POLLIN:
-                self.handle_message_store(self.store_s)
+                Msg().recv(self.store_s, relay=self.frontend_s)
+
+            if self.store_write_s in items and items[self.store_write_s] == zmq.POLLIN:
+                Msg().recv(self.store_write_s, relay=self.frontend_s)
+
+            if self.store_write_h_s in items and items[self.store_write_h_s] == zmq.POLLIN:
+                Msg().recv(self.store_write_h_s, relay=self.frontend_s)
 
             items = dict(poller_backend.poll(BACKEND_TIMEOUT))
 
@@ -227,12 +252,17 @@ class Router(object):
             self.count = 0
             self.count_start = time.time()
 
+    def handle_message_default(self, id, mtype, token, data='[]'):
+        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
+
     def handle_message(self, s):
         id, token, mtype, data = Msg().recv(s)
 
         handler = self.handle_message_default
         if mtype in ['indicators_create', 'indicators_search']:
             handler = getattr(self, "handle_" + mtype)
+
+        logger.debug(f"handling message: {mtype}")
 
         try:
             handler(id, mtype, token, data)
@@ -241,19 +271,14 @@ class Router(object):
 
         self._log_counter()
 
-    def handle_message_default(self, id, mtype, token, data='[]'):
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
-
-    def handle_message_store(self, s):
-        # re-routing from store to front end
-        # id, mtype, token, data = Msg().recv(s)
-        # logger.debug('relaying..')
-        Msg().recv(s, relay=self.frontend_s)
-
     def handle_message_gatherer(self, s):
         id, token, mtype, data = Msg().recv(s)
 
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
+        sock = self.store_write_s
+        if token == self.hunter_token:
+            sock = self.store_write_h_s
+
+        Msg(id=id, mtype=mtype, token=token, data=data).send(sock)
 
         if self.hunters is False and not ROUTER_STREAM_ENABLED and not ROUTER_WEBHOOKS_ENABLED:
             return
