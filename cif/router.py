@@ -14,7 +14,7 @@ from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, G
     RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION, \
     STORE_WRITE_ADDR, STORE_WRITE_H_ADDR
 from cifsdk.constants import CONFIG_PATH
-from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path
+from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path, settings
 from cif.utils import get_argument_parser
 from cif.hunter import Hunter
 from cif.store import Store
@@ -46,6 +46,9 @@ STORE_DEFAULT = os.getenv('CIF_STORE_STORE', STORE_DEFAULT)
 STORE_NODES = os.getenv('CIF_STORE_NODES')
 
 PIDFILE = os.getenv('CIF_ROUTER_PIDFILE', '%s/cif_router.pid' % RUNTIME_PATH)
+CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', 'router.yml')
+if not os.path.isfile(CONFIG_PATH):
+    CONFIG_PATH = os.environ.get('CIF_ROUTER_CONFIG_PATH', os.path.join(os.path.expanduser('~'), 'router.yml'))
 
 TRACE = os.getenv('CIF_ROUTER_TRACE')
 
@@ -68,6 +71,8 @@ class Router(object):
                  hunter_token=HUNTER_TOKEN, hunter_threads=HUNTER_THREADS, gatherer_threads=GATHERER_THREADS,
                  test=False):
 
+        self.settings = settings(CONFIG_PATH)
+
         self.context = zmq.Context()
 
         self._init_store(store_address, store_type, nodes=store_nodes)
@@ -79,7 +84,10 @@ class Router(object):
         self._init_gatherers(gatherer_threads)
 
         self.hunters = False
-        self.hunter_token = 'ea3c399aafa2f2c90593a3cf27d091dde7f697555a46cbd7807ced2889b2644b'
+        self.hunter_token = None
+        if self.settings and self.settings.get('hunter_token'):
+            self.hunter_token = self.settings['hunter_token']
+
         if hunter_threads and int(hunter_threads) > 0:
             self._init_hunters(hunter_threads, hunter_token)
 
