@@ -21,7 +21,7 @@ networkx>=2.1
 csirtg_dnsdb==0.0.0a4
 
 # 5.x requires lxml updates
-tornado==4.5.3
+tornado==5.1.1
 
 gunicorn>=19.9
 gevent>=1.2

@@ -216,13 +216,13 @@ class Router(object):
                 self.handle_message(self.frontend_s)
 
             if self.store_s in items and items[self.store_s] == zmq.POLLIN:
-                self.handle_message_store(self.store_s)
+                Msg().recv(self.store_s, relay=self.frontend_s)
 
             if self.store_write_s in items and items[self.store_write_s] == zmq.POLLIN:
-                self.handle_message_store(self.store_write_s)
+                Msg().recv(self.store_write_s, relay=self.frontend_s)
 
             if self.store_write_h_s in items and items[self.store_write_h_s] == zmq.POLLIN:
-                self.handle_message_store(self.store_write_h_s)
+                Msg().recv(self.store_write_h_s, relay=self.frontend_s)
 
             items = dict(poller_backend.poll(BACKEND_TIMEOUT))
 
@@ -244,6 +244,9 @@ class Router(object):
             self.count = 0
             self.count_start = time.time()
 
+    def handle_message_default(self, id, mtype, token, data='[]'):
+        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
+
     def handle_message(self, s):
         id, token, mtype, data = Msg().recv(s)
 
@@ -251,21 +254,14 @@ class Router(object):
         if mtype in ['indicators_create', 'indicators_search']:
             handler = getattr(self, "handle_" + mtype)
 
+        logger.debug(f"handling message: {mtype}")
+
         try:
             handler(id, mtype, token, data)
         except Exception as e:
             logger.error(e)
 
         self._log_counter()
-
-    def handle_message_default(self, id, mtype, token, data='[]'):
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
-
-    def handle_message_store(self, s):
-        # re-routing from store to front end
-        # id, mtype, token, data = Msg().recv(s)
-        # logger.debug('relaying..')
-        Msg().recv(s, relay=self.frontend_s)
 
     def handle_message_gatherer(self, s):
         id, token, mtype, data = Msg().recv(s)

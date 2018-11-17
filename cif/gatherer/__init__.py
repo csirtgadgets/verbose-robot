@@ -5,6 +5,7 @@ import logging
 import traceback
 import zmq
 import os
+from time import time
 from pprint import pprint
 
 from csirtg_indicator import Indicator
@@ -42,6 +43,7 @@ class Gatherer(MyProcess):
         if isinstance(data, dict):
             data = [data]
 
+        s = time()
         indicators = [Indicator(**d, resolve_geo=True, resolve_peers=True) for d in data]
         for g in self.gatherers:
             for i in indicators:
@@ -66,6 +68,7 @@ class Gatherer(MyProcess):
                 logger.error(e)
                 traceback.print_exc()
 
+        logger.debug('done: %f' % (time() - s))
         return [i.__dict__() for i in indicators]
 
     def start(self):
