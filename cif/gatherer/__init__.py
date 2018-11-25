@@ -18,6 +18,10 @@ from cifsdk.utils import load_plugins
 import cif.gatherer
 
 
+RESOLVE_PEERS = os.getenv('CIF_GATHERER_PEERS', False)
+if RESOLVE_PEERS == '1':
+    RESOLVE_PEERS = True
+
 SNDTIMEO = 30000
 LINGER = 0
 TRACE = os.environ.get('CIF_GATHERER_TRACE')
@@ -44,7 +48,7 @@ class Gatherer(MyProcess):
             data = [data]
 
         s = time()
-        indicators = [Indicator(**d, resolve_geo=True, resolve_peers=True) for d in data]
+        indicators = [Indicator(**d, resolve_geo=True, resolve_peers=RESOLVE_PEERS) for d in data]
         for g in self.gatherers:
             for i in indicators:
                 try:

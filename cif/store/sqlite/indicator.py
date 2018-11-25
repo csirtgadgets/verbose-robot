@@ -37,6 +37,10 @@ GRAPH_PATH = os.getenv('CIF_STORE_GRAPH_PATH', GRAPH_PATH)
 GRAPH_GEXF_PATH = os.path.join(RUNTIME_PATH, 'cifv4.gexf')
 GRAPH_GEXF_PATH = os.getenv('CIF_STORE_GRAPH_GEXF_PATH', GRAPH_GEXF_PATH)
 
+ENABLE_GRAPH = os.getenv('CIF_STORE_GRAPH', False)
+if ENABLE_GRAPH == '1':
+    ENABLE_GRAPH = True
+
 Base = declarative_base()
 
 logger = logging.getLogger('cif.store.sqlite')
@@ -546,6 +550,9 @@ class IndicatorManager(IndicatorManagerPlugin):
         return s
 
     def _insert_graph(self, i):
+        if not ENABLE_GRAPH:
+            return
+
         g = self.graph
 
         g.add_node(i['indicator'], itype=i['itype'])
@@ -775,9 +782,11 @@ class IndicatorManager(IndicatorManagerPlugin):
             for d in data:
                 n = self._upsert(s, n, d, token, cached_added, False)
 
-        nx.write_gpickle(self.graph, GRAPH_PATH)
-        nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
-        logger.debug('done: %0.2f' % (time.time() - s1))
+        if ENABLE_GRAPH:
+            logger.debug("writing graph...")
+            nx.write_gpickle(self.graph, GRAPH_PATH)
+            nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
+            logger.debug('done: %0.2f' % (time.time() - s1))
 
         if n < 0:
             return abs(n)
