@@ -31,7 +31,7 @@ def test_httpd_routes(client):
     rv = client.get('/')
     assert rv.status_code == 200
 
-    for r in ['ping', 'tokens', 'graph', 'predict', 'health']:
+    for r in ['ping', 'tokens', 'predict', 'health']:
         rv = client.get("%s/" % r)
         assert rv.status_code == 401
 
