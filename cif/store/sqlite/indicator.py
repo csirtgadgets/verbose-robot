@@ -13,9 +13,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils.types.url import URLType
 from sqlalchemy_utils.types.email import EmailType
 
-import networkx as nx
-from networkx.readwrite import json_graph
-
 from csirtg_indicator import resolve_itype
 from cifsdk.exceptions import InvalidSearch
 from cifsdk.constants import VALID_FILTERS, PYVERSION, RUNTIME_PATH
@@ -30,16 +27,6 @@ if PYVERSION > 2:
 
 REQUIRED_FIELDS = ['provider', 'indicator', 'tags', 'group', 'itype']
 HASH_TYPES = ['sha1', 'sha256', 'sha512', 'md5']
-
-GRAPH_PATH = os.path.join(RUNTIME_PATH, 'cifv4.gpickle')
-GRAPH_PATH = os.getenv('CIF_STORE_GRAPH_PATH', GRAPH_PATH)
-
-GRAPH_GEXF_PATH = os.path.join(RUNTIME_PATH, 'cifv4.gexf')
-GRAPH_GEXF_PATH = os.getenv('CIF_STORE_GRAPH_GEXF_PATH', GRAPH_GEXF_PATH)
-
-ENABLE_GRAPH = os.getenv('CIF_STORE_GRAPH', False)
-if ENABLE_GRAPH == '1':
-    ENABLE_GRAPH = True
 
 Base = declarative_base()
 
@@ -254,12 +241,6 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         self.handle = handle
         Base.metadata.create_all(engine)
-
-        self.graph = nx.Graph()
-
-        if os.path.exists(GRAPH_PATH):
-            self.graph = nx.read_gpickle(GRAPH_PATH)
-
 
     def to_dict(self, obj):
         d = {}
@@ -549,40 +530,6 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         return s
 
-    def _insert_graph(self, i):
-        if not ENABLE_GRAPH:
-            return
-
-        g = self.graph
-
-        g.add_node(i['indicator'], itype=i['itype'])
-        for t in i.get('tags', []):
-            g.add_node(t)
-            g.add_edge(i['indicator'], t)
-
-        reported_at = arrow.get(i['reported_at'])
-        reported_at = '{}'.format(reported_at.format('YYYY-MM-DD'))
-        g.add_node(reported_at)
-        g.add_edge(i['indicator'], reported_at)
-
-        for a in ['asn', 'asn_desc', 'cc', 'timezone', 'region', 'city']:
-            if not i.get(a):
-                continue
-
-            g.add_node(i[a])
-            g.add_edge(i['indicator'], i[a])
-
-        if i.get('peers'):
-            for p in i['peers']:
-                for a in ['asn', 'cc', 'prefix']:
-                    g.add_node(p[a])
-                    g.add_edge(i['indicator'], p[a])
-
-    def search_graph(self, token, data, **kwargs):
-        rv = json_graph.node_link_data(self.graph)
-
-        return rv
-
     def stats_search(self, token, data, **kwargs):
         limit = data.get('limit', 25)
         s = self.handle()
@@ -661,8 +608,6 @@ class IndicatorManager(IndicatorManagerPlugin):
                 d['rdata'] = ','.join(d['rdata'])
 
             self._cleanup_timestamps(d)
-
-            self._insert_graph(d)
 
             tags = self._normalize_tags(d)
 
@@ -781,12 +726,6 @@ class IndicatorManager(IndicatorManagerPlugin):
             logger.debug('Trying batch again in non-batch mode')
             for d in data:
                 n = self._upsert(s, n, d, token, cached_added, False)
-
-        if ENABLE_GRAPH:
-            logger.debug("writing graph...")
-            nx.write_gpickle(self.graph, GRAPH_PATH)
-            nx.write_gexf(self.graph, GRAPH_GEXF_PATH)
-            logger.debug('done: %0.2f' % (time.time() - s1))
 
         if n < 0:
             return abs(n)
