@@ -396,20 +396,6 @@ class Store(MyProcess):
 
         return x
 
-    def handle_graph_search(self, token, data, **kwargs):
-        t = self.store.tokens.read(token)
-        try:
-            x = self.store.indicators.search_graph(t, data)
-        except Exception as e:
-            logger.error(e)
-
-            if logger.getEffectiveLevel() == logging.DEBUG:
-                traceback.print_exc()
-
-            raise InvalidSearch('invalid search')
-
-        return x
-
     def handle_stats_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
 
