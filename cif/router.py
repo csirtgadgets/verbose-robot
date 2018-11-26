@@ -31,7 +31,7 @@ HUNTER_THREADS = os.getenv('CIF_HUNTER_THREADS', 0)
 HUNTER_ADVANCED = os.getenv('CIF_HUNTER_ADVANCED', 0)
 GATHERER_THREADS = os.getenv('CIF_GATHERER_THREADS', 2)
 STORE_DEFAULT = 'sqlite'
-STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch']
+STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.nx']
 
 ZMQ_HWM = 1000000
 ZMQ_SNDTIMEO = 5000
@@ -173,6 +173,8 @@ class Router(object):
     def stop(self):
         self.terminate = True
 
+        self.store_p.save()
+
         logger.debug('stopping hunters')
         for h in self.hunters:
             h.terminate()
@@ -193,7 +195,9 @@ class Router(object):
             self.webhooks.terminate()
             self.webhooks_s.close()
 
-        self.store_p.terminate()
+        logger.debug('spinning down store...')
+        self.store_p.stop()
+        sleep(5)
         self.frontend_s.close()
 
         sleep(1)  # cleanup
@@ -380,7 +384,7 @@ def main():
             logging.getLogger(i).setLevel(logging.WARNING)
 
     setup_runtime_path(args.runtime_path)
-    setup_signals(__name__)
+    #setup_signals(__name__)
 
     # http://stackoverflow.com/a/789383/7205341
     pid = str(os.getpid())
@@ -416,6 +420,7 @@ def main():
             logger.critical(e)
             traceback.print_exc()
 
+        logger.debug('stopping...')
         r.stop()
         if os.path.isfile(args.pidfile):
             os.unlink(args.pidfile)

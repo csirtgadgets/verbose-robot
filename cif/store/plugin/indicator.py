@@ -18,9 +18,12 @@ class IndicatorManagerPlugin(object):
     def upsert(self, data):
         raise NotImplementedError
 
+    def save(self):
+        return True
+
     def _check_token_groups(self, t, i):
         if not i.get('group'):
-            raise InvalidIndicator('missing group')
+            raise TypeError('missing group')
 
         if i['group'] not in t['groups']:
             raise AuthError('unable to write to %s' % i['group'])

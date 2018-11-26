@@ -36,7 +36,7 @@ LINGER = 3
 MORE_DATA_NEEDED = -2
 
 STORE_DEFAULT = os.environ.get('CIF_STORE_STORE', 'sqlite')
-STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch']
+STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch', 'cif.store.nx']
 CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)  # seconds to flush the queue [interval]
 CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)  # num of records before we start throttling a token
 
@@ -241,6 +241,11 @@ class Store(MyProcess):
                     logger.debug(m)
 
             last_flushed = self._check_create_queue(last_flushed)
+
+    def terminate(self):
+        logger.debug('saving..')
+        self.self.store.save()
+        self.exit.set()
 
     def handle_message(self, m):
         err = None
