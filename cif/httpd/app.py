@@ -23,6 +23,9 @@ from flask_sockets import Sockets
 
 from cifsdk.utils import setup_logging, setup_runtime_path
 from cif.utils import get_argument_parser
+from cifsdk.client.zmq import ZMQ as Client
+from cifsdk.constants import ROUTER_ADDR
+from cifsdk.exceptions import AuthError, TimeoutError
 from .constants import HTTP_LISTEN, HTTP_LISTEN_PORT, TRACE, PIDFILE, SECRET_KEY
 
 from .indicators import api as indicators_api
@@ -111,9 +114,6 @@ def pull_token():
 @api.doc('firehose')
 def firehose(ws):
     """Firehose"""
-    from cifsdk.client.zmq import ZMQ as Client
-    from cifsdk.constants import ROUTER_ADDR
-    from cifsdk.exceptions import AuthError, TimeoutError
 
     t = pull_token()
 
