@@ -36,7 +36,7 @@ pendulum==2.0.3
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg-ipsml-tf
-csirtg-fm>=1.0a9
+csirtg-fm>=1.0a10
 #https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
 
 
