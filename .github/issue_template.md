@@ -1,4 +1,6 @@
-# Do you have an active https://csirtg.io/support account ? :)
+# Are you getting value from the project? Have you Donated?
+
+[PayPal - Donate Now](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YZPQXDLNYZZ3W&source=url)
 
 # Did you check the FAQ https://github.com/csirtgadgets/bearded-avenger-deploymentkit/wiki/FAQ ?
 
