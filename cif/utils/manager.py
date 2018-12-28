@@ -4,14 +4,14 @@ import multiprocessing as mp
 
 class Manager(object):
 
-    def __init__(self, target, threads=1):
+    def __init__(self, target, threads=1, **kwargs):
         self.workers = []
         self.target = target
         self.threads = int(threads)
 
-    def start(self):
+    def start(self, **kwargs):
         for n in range(self.threads):
-            p = mp.Process(target=self.target().start)
+            p = mp.Process(target=self.target(**kwargs).start)
             p.start()
             self.workers.append(p)
 
@@ -24,4 +24,3 @@ class Manager(object):
 
         for p in self.workers:
             p.terminate()
-

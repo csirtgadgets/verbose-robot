@@ -1,6 +1,5 @@
 # !/usr/bin/env python3
 
-import ujson as json
 import logging
 import zmq
 import textwrap
@@ -24,7 +23,7 @@ if TRACE == '1':
 
 logger = logging.getLogger(__name__)
 
-from cif.manager import Manager as _Manager
+from cif.utils.manager import Manager as _Manager
 
 
 class Manager(_Manager):
@@ -34,9 +33,6 @@ class Manager(_Manager):
 
         self.socket = context.socket(zmq.PUSH)
         self.socket.bind(ROUTER_STREAM_ADDR)
-
-    def teardown(self):
-        self.socket.close()
 
 
 class Streamer(MyProcess):
@@ -76,12 +72,6 @@ class Streamer(MyProcess):
             logger.debug('sending..')
             for d in data:
                 publisher.send(d)
-
-        router.close()
-        publisher.close()
-        context.term()
-        del router
-        self.stop()
 
 
 def main():

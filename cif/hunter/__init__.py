@@ -15,6 +15,7 @@ from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser,
 
 from cif.utils.process import MyProcess
 import cif.hunter
+from cif.utils.manager import Manager as _Manager
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,18 @@ logger.setLevel(logging.INFO)
 
 if TRACE in [1, '1']:
     logger.setLevel(logging.DEBUG)
+
+
+class Manager(_Manager):
+
+    def __init__(self, context, threads=2):
+        _Manager.__init__(self, Hunter, threads)
+
+        self.sink = context.socket(zmq.ROUTER)
+        self.sink.bind(HUNTER_SINK_ADDR)
+
+        self.socket = context.socket(zmq.PUSH)
+        self.socket.bind(HUNTER_ADDR)
 
 
 class Hunter(MyProcess):
@@ -149,10 +162,6 @@ class Hunter(MyProcess):
                     if logger.getEffectiveLevel() == logging.DEBUG:
                         import traceback
                         traceback.print_exc()
-
-        socket.close()
-        router.context.term()
-        del router
 
 
 def main():

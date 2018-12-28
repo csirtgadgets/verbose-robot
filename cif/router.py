@@ -8,24 +8,25 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from time import sleep
 import zmq
+from zmq import POLLIN as Z_POLLIN
 import os
+from pprint import pprint
 
-from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR, GATHERER_ADDR, GATHERER_SINK_ADDR, HUNTER_SINK_ADDR, \
-    RUNTIME_PATH, ROUTER_STREAM_ADDR, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED, ROUTER_WEBHOOKS_ADDR, VERSION, \
-    STORE_WRITE_ADDR, STORE_WRITE_H_ADDR
+from cif.constants import ROUTER_ADDR, STORE_ADDR, HUNTER_ADDR,  \
+    RUNTIME_PATH, ROUTER_STREAM_ENABLED, ROUTER_WEBHOOKS_ENABLED
 from cifsdk.constants import CONFIG_PATH
-from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path, settings
+from cifsdk.utils import setup_logging, setup_signals, setup_runtime_path, \
+    settings
 from cif.utils import get_argument_parser
-from cif.hunter import Hunter
-from cif.store import Store
-from cif.gatherer import Gatherer
-from cif.streamer import Streamer
-from cif.webhooks import Webhooks
+
+
 import time
-import multiprocessing as mp
 from cifsdk.msg import Msg
 from cif.gatherer import Manager as GathererManager
 from cif.streamer import Manager as StreamManager
+from cif.webhooks import Manager as WebhooksManager
+from cif.hunter import Manager as HunterManager
+from cif.store import Manager as StoreManager
 
 
 HUNTER_MIN_CONFIDENCE = 1
@@ -63,15 +64,7 @@ if TRACE in [1, '1']:
 
 class Router(object):
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        return self
-
-    def __init__(self, listen=ROUTER_ADDR, store_type=STORE_DEFAULT, store_address=STORE_ADDR, store_nodes=None,
-                 hunter_token=HUNTER_TOKEN, hunter_threads=HUNTER_THREADS, gatherer_threads=GATHERER_THREADS,
-                 test=False):
+    def __init__(self, listen=ROUTER_ADDR, test=False, **kwargs):
 
         self.settings = settings(CONFIG_PATH)
 
@@ -83,160 +76,146 @@ class Router(object):
         self.terminate = False
         self.test = test
 
-        self._init_store(store_address, store_type, nodes=store_nodes)
-        self._init_gatherers(gatherer_threads)
+        self.store = self._init_store(**kwargs)
 
-        self.hunters = False
+        self.gatherer_manager = self._init_gatherers(**kwargs)
+
         self.hunter_token = None
         if self.settings and self.settings.get('hunter_token'):
             self.hunter_token = self.settings['hunter_token']
 
-        if hunter_threads and int(hunter_threads) > 0:
-            self._init_hunters(hunter_threads, hunter_token)
+        self.hunters = self._init_hunters(**kwargs)
+        self.streamer = self._init_streamer()
+        self.webhooks = self._init_webhooks()
 
-        self._init_streamer()
-        self._init_webhooks()
-
-        self._init_frontend(listen)
-
-    def _init_webhooks(self):
-        self.webhooks = False
-        if not ROUTER_WEBHOOKS_ENABLED:
-            return
-
-        logger.debug('enabling webhooks service..')
-        self.webhooks_s = self.context.socket(zmq.PUSH)
-        self.webhooks_s.bind(ROUTER_WEBHOOKS_ADDR)
-        self.webhooks = mp.Process(target=Webhooks().start)
-        self.webhooks.start()
-
-    def _init_streamer(self):
-        logger.debug('enabling streamer..')
-        self.streamer = False
-
-        # CIF_ROUTER_STREAM_ENABLED=1|0
-        if not ROUTER_STREAM_ENABLED:
-            return
-
-        self.streamer = StreamManager(self.context)
-        n = self.streamer.start()
-        assert len(n) == 1
-
-    def _init_hunters(self, threads, token):
-        if int(threads) == 0:
-            return
-
-        logger.info('launching hunters...')
-        self.hunter_sink_s = self.context.socket(zmq.ROUTER)
-        self.hunter_sink_s.bind(HUNTER_SINK_ADDR)
-
-        self.hunters_s = self.context.socket(zmq.PUSH)
-        self.hunters_s.bind(HUNTER_ADDR)
-
-        self.hunters = []
-        for n in range(int(threads)):
-            p = mp.Process(target=Hunter(token=token).start)
-            p.start()
-            self.hunters.append(p)
-
-    def _init_gatherers(self, threads):
-        logger.info('launching gatherers...')
-
-        self.gatherer_manager = GathererManager(self.context, threads)
-        n = self.gatherer_manager.start()
-        assert len(n) == int(threads)
-
-    def _init_store(self, store_address, store_type, nodes=False):
-        logger.info('launching store...')
-        self.store_s = self.context.socket(zmq.DEALER)
-        self.store_s.bind(store_address)
-
-        self.store_write_s = self.context.socket(zmq.DEALER)
-        self.store_write_s.bind(STORE_WRITE_ADDR)
-
-        self.store_write_h_s = self.context.socket(zmq.DEALER)
-        self.store_write_h_s.bind(STORE_WRITE_H_ADDR)
-
-        self.store_p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
-        self.store_p.start()
-
-        logger.info('Waiting for Store to initialize...')
-        time.sleep(5)
-        logger.info("Store Ready....")
-
-    def _init_frontend(self, listen):
         logger.info('launching frontend...')
         self.frontend_s = self.context.socket(zmq.ROUTER)
         self.frontend_s.set_hwm(ZMQ_HWM)
         self.frontend_s.bind(listen)
 
+        self._init_pollers()
+
+    def _init_webhooks(self):
+        if not ROUTER_WEBHOOKS_ENABLED:
+            return False
+
+        m = WebhooksManager(self.context)
+        m.start()
+        return m
+
+    def _init_streamer(self):
+        # CIF_ROUTER_STREAM_ENABLED=1|0
+        if not ROUTER_STREAM_ENABLED:
+            return False
+
+        m = StreamManager(self.context)
+        m.start()
+        return m
+
+    def _init_hunters(self, **kwargs):
+        threads = kwargs.get('hunter_threads', HUNTER_THREADS)
+        if int(threads) == 0:
+            return False
+
+        logger.info('launching hunters...')
+
+        m = HunterManager(self.context, threads)
+        m.start()
+        return m
+
+    def _init_gatherers(self, **kwargs):
+        logger.info('launching gatherers...')
+
+        threads = kwargs.get('gatherer_threads', GATHERER_THREADS)
+
+        m = GathererManager(self.context, threads)
+        m.start()
+        return m
+
+    def _init_store(self, **kwargs):
+        logger.info('launching store...')
+
+        store_address = kwargs.get('store_address', STORE_NODES)
+        store_type = kwargs.get('store_type', STORE_DEFAULT)
+
+        m = StoreManager(self.context)
+        m.start(store_address=store_address, store_type=store_type)
+
+        logger.info('Waiting for Store to initialize...')
+        time.sleep(5)
+        logger.info("Store Ready....")
+
+        return m
+
     def stop(self):
         self.terminate = True
+        logger.debug('shutting down front end..')
 
-        logger.debug('stopping hunters')
-        for h in self.hunters:
-            h.terminate()
-
-        sleep(1)  # cleanup
-
-        self.gatherer_manager.stop()
-
-        sleep(1)  # cleanup
-
-        if self.streamer:
-            self.streamer.stop()
-
-        if self.webhooks:
-            self.webhooks.terminate()
-            self.webhooks_s.close()
-
-        self.store_p.terminate()
         self.frontend_s.close()
+        sleep(0.5)
 
-        sleep(1)  # cleanup
+        # hunters come first
+        for m in ['hunters', 'gatherer_manager', 'streamer', 'webhooks',
+                  'store']:
+            if getattr(self, m):
+                logger.debug(f"stopping {m}...")
+                getattr(self, m).stop()
+                sleep(0.5)
+
+    def _init_pollers(self):
+        self.poller = zmq.Poller()
+        self.poller_backend = zmq.Poller()
+
+        # register the front end poller
+        self.poller.register(self.frontend_s, Z_POLLIN)
+        self.poller.register(self.store.socket, Z_POLLIN)
+        self.poller.register(self.store.s_write, Z_POLLIN)
+        self.poller.register(self.store.s_hunter_write, Z_POLLIN)
+
+        # setup the backend..
+        self.poller_backend.register(self.gatherer_manager.sink_s, Z_POLLIN)
+
+        if self.hunters:
+            self.poller_backend.register(self.hunters.sink, Z_POLLIN)
+
+    def _poll_frontend(self):
+        items = dict(self.poller.poll(FRONTEND_TIMEOUT))
+
+        if items.get(self.frontend_s) == Z_POLLIN:
+            self.handle_message(self.frontend_s)
+
+        if items.get(self.store.socket) == Z_POLLIN:
+            Msg().recv(self.store.socket, relay=self.frontend_s)
+
+        if items.get(self.store.s_write) == Z_POLLIN:
+            Msg().recv(self.store.s_write, relay=self.frontend_s)
+
+        if items.get(self.store.s_hunter_write) == Z_POLLIN:
+            Msg().recv(self.store.s_hunter_write, relay=self.frontend_s)
+
+    def _poll_backend(self):
+        items = dict(self.poller_backend.poll(BACKEND_TIMEOUT))
+
+        if items.get(self.gatherer_manager.sink_s) == Z_POLLIN:
+            self.handle_message_gatherer(self.gatherer_manager.sink_s)
+
+        if not self.hunters:
+            return
+
+        if items.get(self.hunters.sink) == Z_POLLIN:
+            self.handle_message(self.hunters.sink)
 
     def start(self):
         logger.debug('starting loop')
 
-        poller = zmq.Poller()
-        poller_backend = zmq.Poller()
-
-        poller_backend.register(self.gatherer_manager.sink_s, zmq.POLLIN)
-
-        poller.register(self.store_s, zmq.POLLIN)
-        poller.register(self.store_write_s, zmq.POLLIN)
-        poller.register(self.store_write_h_s, zmq.POLLIN)
-
-        if self.hunters:
-            poller_backend.register(self.hunter_sink_s, zmq.POLLIN)
-
-        poller.register(self.frontend_s, zmq.POLLIN)
-
-        # we use this instead of a loop so we can make sure to get front end queries as they come in
-        # that way hunters don't over burden the store, think of it like QoS
-        # it's weighted so front end has a higher chance of getting a faster response
+        # we use this instead of a loop so we can make sure to get front end
+        # queries as they come in that way hunters don't over burden the store,
+        # think of it like QoS it's weighted so front end has a higher chance
+        # of getting a faster response
         while not self.terminate:
-            items = dict(poller.poll(FRONTEND_TIMEOUT))
+            self._poll_frontend()
 
-            if self.frontend_s in items and items[self.frontend_s] == zmq.POLLIN:
-                self.handle_message(self.frontend_s)
-
-            if self.store_s in items and items[self.store_s] == zmq.POLLIN:
-                Msg().recv(self.store_s, relay=self.frontend_s)
-
-            if self.store_write_s in items and items[self.store_write_s] == zmq.POLLIN:
-                Msg().recv(self.store_write_s, relay=self.frontend_s)
-
-            if self.store_write_h_s in items and items[self.store_write_h_s] == zmq.POLLIN:
-                Msg().recv(self.store_write_h_s, relay=self.frontend_s)
-
-            items = dict(poller_backend.poll(BACKEND_TIMEOUT))
-
-            if self.gatherer_manager.sink_message(items):
-                self.handle_message_gatherer(self.gatherer_manager.sink_s)
-
-            if self.hunters and self.hunter_sink_s in items and items[self.hunter_sink_s] == zmq.POLLIN:
-                self.handle_message(self.hunter_sink_s)
+            self._poll_backend()
 
             if self.test:
                 break
@@ -251,7 +230,8 @@ class Router(object):
             self.count_start = time.time()
 
     def handle_message_default(self, id, mtype, token, data='[]'):
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store_s)
+        Msg(id=id, mtype=mtype, token=token, data=data)\
+            .send(self.store.socket)
 
     def handle_message(self, s):
         id, token, mtype, data = Msg().recv(s)
@@ -272,9 +252,9 @@ class Router(object):
     def handle_message_gatherer(self, s):
         id, token, mtype, data = Msg().recv(s)
 
-        sock = self.store_write_s
+        sock = self.store.s_write
         if token == self.hunter_token:
-            sock = self.store_write_h_s
+            sock = self.store.s_hunter_write
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(sock)
 
@@ -293,23 +273,23 @@ class Router(object):
                 self.streamer.socket.send_string(s)
 
             if ROUTER_WEBHOOKS_ENABLED:
-                self.webhooks_s.send_string(s)
+                self.webhooks.socket.send_string(s)
 
             if self.hunters and int(d.get('confidence', 0)) >= HUNTER_MIN_CONFIDENCE:
-                self.hunters_s.send_string(s)
+                self.hunters.socket.send_string(s)
 
     def handle_indicators_search(self, id, mtype, token, data):
         self.handle_message_default(id, mtype, token, data)
 
         # TODO- issue here with un-authorized messages, may need to re-think using store success/fail status
         if self.hunters:
-            self.hunters_s.send_string(data)
+            self.hunters.socket.send_string(data)
 
         if ROUTER_STREAM_ENABLED:
             self.streamer.socket.send_string(data)
 
         if ROUTER_WEBHOOKS_ENABLED:
-            self.webhooks_s.send_string(data)
+            self.webhooks.socket.send_string(data)
 
     def handle_indicators_create(self, id, mtype, token, data):
         Msg(id=id, mtype=mtype, token=token, data=data)\
@@ -338,29 +318,51 @@ def main():
         parents=[p]
     )
 
-    p.add_argument('--config', help='specify config path [default: %(default)s', default=CONFIG_PATH)
-    p.add_argument('--listen', help='address to listen on [default: %(default)s]', default=ROUTER_ADDR)
+    p.add_argument('--config',
+                   help='specify config path [default: %(default)s',
+                   default=CONFIG_PATH)
 
-    p.add_argument('--gatherer-threads', help='specify number of gatherer threads to use [default: %(default)s]',
+    p.add_argument('--listen',
+                   help='address to listen on [default: %(default)s]',
+                   default=ROUTER_ADDR)
+
+    p.add_argument('-G', '--gatherers', '--gatherer-threads',
+                   help='specify number of gatherer threads to use '
+                        '[default: %(default)s]',
                    default=GATHERER_THREADS)
 
-    p.add_argument('--hunter', help='address hunters listen on on [default: %(default)s]', default=HUNTER_ADDR)
-    p.add_argument('--hunter-token', help='specify token for hunters to use [default: %(default)s]',
+    p.add_argument('--hunter', help='address hunters listen on on '
+                                    '[default: %(default)s]',
+                   default=HUNTER_ADDR)
+
+    p.add_argument('--hunter-token', help='specify token for hunters to use '
+                                          '[default: %(default)s]',
                    default=HUNTER_TOKEN)
-    p.add_argument('--hunter-threads', help='specify number of hunter threads to use [default: %(default)s]',
+
+    p.add_argument('-H', '--hunters', '--hunter-threads',
+                   help='specify number of hunter threads to use '
+                        '[default: %(default)s]',
                    default=HUNTER_THREADS)
 
-    p.add_argument("--store-address", help="specify the store address cif-router is listening on[default: %("
-                                           "default)s]", default=STORE_ADDR)
+    p.add_argument("--store-address",
+                   help="specify the store address cif-router is listening on "
+                        "[default: %(default)s]", default=STORE_ADDR)
 
-    p.add_argument("--store", help="specify a store type {} [default: %(default)s]".format(', '.join(STORE_PLUGINS)),
+    p.add_argument("--store",
+                   help=f"specify a store type {', '.join(STORE_PLUGINS)} "
+                   f"[default: %(default)s]",
                    default=STORE_DEFAULT)
 
-    p.add_argument('--store-nodes', help='specify storage nodes address [default: %(default)s]', default=STORE_NODES)
+    p.add_argument('--store-nodes',
+                   help='specify storage nodes address [default: %(default)s]',
+                   default=STORE_NODES)
 
-    p.add_argument('--logging-ignore', help='set logging to WARNING for specific modules')
+    p.add_argument('--logging-ignore',
+                   help='set logging to WARNING for specific modules')
 
-    p.add_argument('--pidfile', help='specify pidfile location [default: %(default)s]', default=PIDFILE)
+    p.add_argument('--pidfile',
+                   help='specify pidfile location [default: %(default)s]',
+                   default=PIDFILE)
 
     args = p.parse_args()
     setup_logging(args)
@@ -390,35 +392,37 @@ def main():
         logger.critical("%s already exists, exiting" % args.pidfile)
         raise SystemExit
 
-    with Router(listen=args.listen, store_type=args.store, store_address=args.store_address,
-                store_nodes=args.store_nodes, hunter_token=args.hunter_token, hunter_threads=args.hunter_threads,
-                gatherer_threads=args.gatherer_threads) as r:
+    r = Router(listen=args.listen, store_type=args.store,
+               store_address=args.store_address,
+               store_nodes=args.store_nodes, hunter_token=args.hunter_token,
+               hunter_threads=args.hunters, gatherer_threads=args.gatherers)
 
-        try:
-            pidfile = open(args.pidfile, 'w')
-            pidfile.write(pid)
-            pidfile.close()
-        except PermissionError as e:
-            logger.error('unable to create pid %s' % args.pidfile)
+    try:
+        pidfile = open(args.pidfile, 'w')
+        pidfile.write(pid)
+        pidfile.close()
 
-        try:
-            logger.info('starting router..')
-            r.start()
+    except PermissionError as e:
+        logger.critical('unable to create pid %s' % args.pidfile)
+        raise SystemExit
 
-        except KeyboardInterrupt:
-            # todo - signal to threads to shut down and wait for them to finish
-            logger.info('shutting down via SIGINT...')
+    try:
+        logger.info('starting router..')
+        r.start()
 
-        except SystemExit:
-            logger.info('shutting down via SystemExit...')
+    except KeyboardInterrupt:
+        # todo - signal to threads to shut down and wait for them to finish
+        logger.info('shutting down via SIGINT...')
 
-        except Exception as e:
-            logger.critical(e)
-            traceback.print_exc()
+    except SystemExit:
+        logger.info('shutting down via SystemExit...')
 
-        r.stop()
-        if os.path.isfile(args.pidfile):
-            os.unlink(args.pidfile)
+    except Exception as e:
+        logger.critical(e)
+        traceback.print_exc()
+
+    logger.info('stopping..')
+    r.stop()
 
     logger.info('Shutting down')
     if os.path.isfile(args.pidfile):

@@ -16,7 +16,7 @@ from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
 from cifsdk.msg import Msg
 from cifsdk.utils import load_plugins
 import cif.gatherer
-from cif.manager import Manager as _Manager
+from cif.utils.manager import Manager as _Manager
 
 
 RESOLVE_PEERS = os.getenv('CIF_GATHERER_PEERS', False)
@@ -46,15 +46,6 @@ class Manager(_Manager):
 
         self.sink_s = context.socket(zmq.PULL)
         self.sink_s.bind(GATHERER_SINK_ADDR)
-
-    def teardown(self):
-        self.s.close()
-        self.sink_s.close()
-
-    def sink_message(self, items):
-        if self.sink_s in items and \
-                items[self.sink_s] == zmq.POLLIN:
-            return True
 
 
 class Gatherer(MyProcess):
@@ -129,11 +120,6 @@ class Gatherer(MyProcess):
 
             data = self.process(data)
             Msg(id=id, mtype=mtype, token=token, data=data).send(push_s)
-
-        # pull_s.close()
-        # push_s.close()
-        # context.term()
-        self.stop()
 
 
 def main():

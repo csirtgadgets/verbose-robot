@@ -8,7 +8,6 @@ import ujson as json
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import yaml
-from pprint import pprint
 import arrow
 import zmq
 import time
@@ -18,13 +17,14 @@ from base64 import b64decode
 from csirtg_indicator import Indicator
 from cifsdk.msg import Msg
 from cif.constants import STORE_ADDR, STORE_WRITE_ADDR, STORE_WRITE_H_ADDR
-from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
+from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cifsdk.utils import setup_logging, setup_signals, load_plugin
 from cif.utils import get_argument_parser
 
 from cif.utils.process import MyProcess
 import cif.store
+from cif.utils.manager import Manager as _Manager
 from .ping import PingHandler
 from .token import TokenHandler
 
@@ -54,6 +54,21 @@ logger.setLevel(logging.ERROR)
 
 if TRACE == '1':
     logger.setLevel(logging.DEBUG)
+
+
+class Manager(_Manager):
+
+    def __init__(self, context):
+        _Manager.__init__(self, Store, 1)
+
+        self.socket = context.socket(zmq.DEALER)
+        self.socket.bind(STORE_ADDR)
+
+        self.s_write = context.socket(zmq.DEALER)
+        self.s_write.bind(STORE_WRITE_ADDR)
+
+        self.s_hunter_write = context.socket(zmq.DEALER)
+        self.s_hunter_write.bind(STORE_WRITE_H_ADDR)
 
 
 class Store(MyProcess):
@@ -241,6 +256,10 @@ class Store(MyProcess):
                     logger.debug(m)
 
             last_flushed = self._check_create_queue(last_flushed)
+
+        self.router.close()
+        self.router_write.close()
+        self.router_write_h.close()
 
     def handle_message(self, m):
         err = None

@@ -20,6 +20,17 @@ if TRACE == '1':
 
 logger = logging.getLogger(__name__)
 
+from cif.utils.manager import Manager as _Manager
+
+
+class Manager(_Manager):
+
+    def __init__(self, context, threads=1):
+        _Manager.__init__(self, Webhooks, threads)
+
+        self.socket = context.socket(zmq.PUSH)
+        self.socket.bind(ROUTER_WEBHOOKS_ADDR)
+
 
 class Webhooks(MyProcess):
     def __init__(self, **kwargs):
@@ -34,7 +45,7 @@ class Webhooks(MyProcess):
 
         with open('webhooks.yml') as f:
             try:
-                self.hooks = yaml.load(f)
+                self.hooks = yaml.safe_load(f)
             except yaml.YAMLError as exc:
                 logger.error(exc)
 
@@ -97,8 +108,3 @@ class Webhooks(MyProcess):
             logger.debug(data)
 
             self.send(json.loads(data[0]))
-
-        router.close()
-        context.term()
-        del router
-        self.stop()
