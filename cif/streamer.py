@@ -7,9 +7,11 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from .utils.process import MyProcess
 import os
+from zmq.eventloop import zmqstream, ioloop
 
 from cifsdk.utils import setup_runtime_path, setup_logging
 from cif.utils import get_argument_parser
+from cif.utils.manager import Manager as _Manager
 from .constants import ROUTER_STREAM_ADDR, ROUTER_STREAM_ADDR_PUB
 
 TRACE = os.getenv('CIF_STREAMER_TRACE', False)
@@ -23,8 +25,6 @@ if TRACE == '1':
 
 logger = logging.getLogger(__name__)
 
-from cif.utils.manager import Manager as _Manager
-
 
 class Manager(_Manager):
 
@@ -32,7 +32,7 @@ class Manager(_Manager):
         _Manager.__init__(self, Streamer, threads)
 
         self.socket = context.socket(zmq.PUSH)
-        self.socket.bind(ROUTER_STREAM_ADDR)
+        self.socket.connect(ROUTER_STREAM_ADDR)
 
 
 class Streamer(MyProcess):
@@ -40,38 +40,36 @@ class Streamer(MyProcess):
     def __init__(self, **kwargs):
         MyProcess.__init__(self, **kwargs)
 
+        self.publisher = None
+
+    def send(self, message):
+        for m in message:
+            self.publisher.send(m)
+
     def start(self):
+        loop = ioloop.IOLoop()
         context = zmq.Context()
 
-        router = context.socket(zmq.PULL)
-        publisher = context.socket(zmq.PUB)
+        logger.debug(f"bindings {ROUTER_STREAM_ADDR_PUB}")
+        self.publisher = context.socket(zmq.PUB)
+        self.publisher.bind(ROUTER_STREAM_ADDR_PUB)
 
-        logger.debug('binding: %s' % ROUTER_STREAM_ADDR_PUB)
-        publisher.bind(ROUTER_STREAM_ADDR_PUB)
+        logger.debug(f"connecting to router: {ROUTER_STREAM_ADDR}")
+        router = zmqstream.ZMQStream(context.socket(zmq.PULL), loop)
+        router.on_recv(self.send)
 
-        logger.debug('connecting: %s' % ROUTER_STREAM_ADDR)
-        router.connect(ROUTER_STREAM_ADDR)
+        router.bind(ROUTER_STREAM_ADDR)
 
-        poller = zmq.Poller()
-        poller.register(router, zmq.POLLIN)
+        logger.debug("starting...")
 
-        logger.info('streamer started..')
-        while not self.exit.is_set():
-            try:
-                s = dict(poller.poll(1000))
-            except (SystemExit, KeyboardInterrupt):
-                break
+        try:
+            loop.start()
 
-            if router not in s:
-                continue
+        except KeyboardInterrupt:
+            # catch SIGINT from above..
+            pass
 
-            data = router.recv_multipart()
-
-            logger.debug(data)
-
-            logger.debug('sending..')
-            for d in data:
-                publisher.send(d)
+        self.stop()
 
 
 def main():
@@ -100,10 +98,7 @@ def main():
 
     s = Streamer()
 
-    try:
-        s.start()
-    except KeyboardInterrupt:
-        s.stop()
+    s.start()
 
 
 if __name__ == "__main__":
