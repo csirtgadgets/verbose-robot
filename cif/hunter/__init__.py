@@ -163,9 +163,6 @@ class Hunter(MyProcess):
                         import traceback
                         traceback.print_exc()
 
-        # socket.close()
-        # router.close()
-
 
 def main():
     p = get_argument_parser()

@@ -31,9 +31,6 @@ class Manager(_Manager):
         self.socket = context.socket(zmq.PUSH)
         self.socket.bind(ROUTER_WEBHOOKS_ADDR)
 
-    def teardown(self):
-        self.socket.close()
-
 
 class Webhooks(MyProcess):
     def __init__(self, **kwargs):
@@ -48,7 +45,7 @@ class Webhooks(MyProcess):
 
         with open('webhooks.yml') as f:
             try:
-                self.hooks = yaml.load(f)
+                self.hooks = yaml.safe_load(f)
             except yaml.YAMLError as exc:
                 logger.error(exc)
 
@@ -111,5 +108,3 @@ class Webhooks(MyProcess):
             logger.debug(data)
 
             self.send(json.loads(data[0]))
-
-        router.close()
