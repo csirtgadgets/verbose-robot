@@ -24,6 +24,20 @@ if TRACE == '1':
 
 logger = logging.getLogger(__name__)
 
+from cif.manager import Manager as _Manager
+
+
+class Manager(_Manager):
+
+    def __init__(self, context, threads=1):
+        _Manager.__init__(self, Streamer, threads)
+
+        self.socket = context.socket(zmq.PUSH)
+        self.socket.bind(ROUTER_STREAM_ADDR)
+
+    def teardown(self):
+        self.socket.close()
+
 
 class Streamer(MyProcess):
 

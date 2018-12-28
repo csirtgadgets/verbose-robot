@@ -24,6 +24,8 @@ from cif.webhooks import Webhooks
 import time
 import multiprocessing as mp
 from cifsdk.msg import Msg
+from cif.gatherer import Manager as GathererManager
+from cif.streamer import Manager as StreamManager
 
 
 HUNTER_MIN_CONFIDENCE = 1
@@ -75,12 +77,13 @@ class Router(object):
 
         self.context = zmq.Context()
 
-        self._init_store(store_address, store_type, nodes=store_nodes)
-        logger.info('Waiting for Store to initialize...')
-        time.sleep(5)
-        logger.info("Store Ready....")
+        self.count = 0
+        self.count_start = time.time()
 
-        self.gatherers = []
+        self.terminate = False
+        self.test = test
+
+        self._init_store(store_address, store_type, nodes=store_nodes)
         self._init_gatherers(gatherer_threads)
 
         self.hunters = False
@@ -91,23 +94,16 @@ class Router(object):
         if hunter_threads and int(hunter_threads) > 0:
             self._init_hunters(hunter_threads, hunter_token)
 
-        self.streamer = False
-        if ROUTER_STREAM_ENABLED:
-            self._init_streamer()
-
-        self.webhooks = False
-        if ROUTER_WEBHOOKS_ENABLED:
-            self._init_webhooks()
+        self._init_streamer()
+        self._init_webhooks()
 
         self._init_frontend(listen)
 
-        self.count = 0
-        self.count_start = time.time()
-
-        self.terminate = False
-        self.test = test
-
     def _init_webhooks(self):
+        self.webhooks = False
+        if not ROUTER_WEBHOOKS_ENABLED:
+            return
+
         logger.debug('enabling webhooks service..')
         self.webhooks_s = self.context.socket(zmq.PUSH)
         self.webhooks_s.bind(ROUTER_WEBHOOKS_ADDR)
@@ -116,10 +112,15 @@ class Router(object):
 
     def _init_streamer(self):
         logger.debug('enabling streamer..')
-        self.streamer_s = self.context.socket(zmq.PUSH)
-        self.streamer_s.bind(ROUTER_STREAM_ADDR)
-        self.streamer = mp.Process(target=Streamer().start)
-        self.streamer.start()
+        self.streamer = False
+
+        # CIF_ROUTER_STREAM_ENABLED=1|0
+        if not ROUTER_STREAM_ENABLED:
+            return
+
+        self.streamer = StreamManager(self.context)
+        n = self.streamer.start()
+        assert len(n) == 1
 
     def _init_hunters(self, threads, token):
         if int(threads) == 0:
@@ -140,15 +141,10 @@ class Router(object):
 
     def _init_gatherers(self, threads):
         logger.info('launching gatherers...')
-        self.gatherer_s = self.context.socket(zmq.PUSH)
-        self.gatherer_sink_s = self.context.socket(zmq.PULL)
-        self.gatherer_s.bind(GATHERER_ADDR)
-        self.gatherer_sink_s.bind(GATHERER_SINK_ADDR)
 
-        for n in range(int(threads)):
-            p = mp.Process(target=Gatherer().start)
-            p.start()
-            self.gatherers.append(p)
+        self.gatherer_manager = GathererManager(self.context, threads)
+        n = self.gatherer_manager.start()
+        assert len(n) == int(threads)
 
     def _init_store(self, store_address, store_type, nodes=False):
         logger.info('launching store...')
@@ -163,6 +159,10 @@ class Router(object):
 
         self.store_p = mp.Process(target=Store(store_address=store_address, store_type=store_type, nodes=nodes).start)
         self.store_p.start()
+
+        logger.info('Waiting for Store to initialize...')
+        time.sleep(5)
+        logger.info("Store Ready....")
 
     def _init_frontend(self, listen):
         logger.info('launching frontend...')
@@ -179,15 +179,12 @@ class Router(object):
 
         sleep(1)  # cleanup
 
-        logger.debug('stopping gatherers')
-        for g in self.gatherers:
-            g.terminate()
+        self.gatherer_manager.stop()
 
         sleep(1)  # cleanup
 
         if self.streamer:
-            self.streamer.terminate()
-            self.streamer_s.close()
+            self.streamer.stop()
 
         if self.webhooks:
             self.webhooks.terminate()
@@ -204,7 +201,8 @@ class Router(object):
         poller = zmq.Poller()
         poller_backend = zmq.Poller()
 
-        poller_backend.register(self.gatherer_sink_s, zmq.POLLIN)
+        poller_backend.register(self.gatherer_manager.sink_s, zmq.POLLIN)
+
         poller.register(self.store_s, zmq.POLLIN)
         poller.register(self.store_write_s, zmq.POLLIN)
         poller.register(self.store_write_h_s, zmq.POLLIN)
@@ -234,8 +232,8 @@ class Router(object):
 
             items = dict(poller_backend.poll(BACKEND_TIMEOUT))
 
-            if self.gatherer_sink_s in items and items[self.gatherer_sink_s] == zmq.POLLIN:
-                self.handle_message_gatherer(self.gatherer_sink_s)
+            if self.gatherer_manager.sink_message(items):
+                self.handle_message_gatherer(self.gatherer_manager.sink_s)
 
             if self.hunters and self.hunter_sink_s in items and items[self.hunter_sink_s] == zmq.POLLIN:
                 self.handle_message(self.hunter_sink_s)
@@ -280,7 +278,8 @@ class Router(object):
 
         Msg(id=id, mtype=mtype, token=token, data=data).send(sock)
 
-        if self.hunters is False and not ROUTER_STREAM_ENABLED and not ROUTER_WEBHOOKS_ENABLED:
+        if self.hunters is False and not ROUTER_STREAM_ENABLED \
+                and not ROUTER_WEBHOOKS_ENABLED:
             return
 
         data = json.loads(data)
@@ -291,7 +290,7 @@ class Router(object):
             s = json.dumps(d)
 
             if ROUTER_STREAM_ENABLED:
-                self.streamer_s.send_string(s)
+                self.streamer.socket.send_string(s)
 
             if ROUTER_WEBHOOKS_ENABLED:
                 self.webhooks_s.send_string(s)
@@ -307,13 +306,14 @@ class Router(object):
             self.hunters_s.send_string(data)
 
         if ROUTER_STREAM_ENABLED:
-            self.streamer_s.send_string(data)
+            self.streamer.socket.send_string(data)
 
         if ROUTER_WEBHOOKS_ENABLED:
             self.webhooks_s.send_string(data)
 
     def handle_indicators_create(self, id, mtype, token, data):
-        Msg(id=id, mtype=mtype, token=token, data=data).send(self.gatherer_s)
+        Msg(id=id, mtype=mtype, token=token, data=data)\
+            .send(self.gatherer_manager.s)
 
 
 def main():
