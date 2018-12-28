@@ -27,7 +27,7 @@ def test_predict_ipv4():
         # for tests when we're not pre-loading maxmind/geoip libs
         assert 16 < avg < 98
     else:
-        assert 16 < avg < 93
+        assert 16 < avg < 95
 
 
 def test_predict_url():
@@ -40,7 +40,7 @@ def test_predict_url():
     probs = [i.probability for i in indicators]
     avg = (sum(probs) / len(probs))
     print(avg)
-    assert 16 < avg < 93
+    assert 16 < avg < 95
 
 
 def test_predict_fqdn():
@@ -53,4 +53,4 @@ def test_predict_fqdn():
     probs = [i.probability for i in indicators]
     avg = (sum(probs) / len(probs))
     print(avg)
-    assert 16 < avg < 93
+    assert 16 < avg < 95
