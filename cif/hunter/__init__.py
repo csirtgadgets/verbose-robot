@@ -15,7 +15,7 @@ from cifsdk.utils import setup_runtime_path, setup_logging, get_argument_parser,
 
 from cif.utils.process import MyProcess
 import cif.hunter
-from cif.manager import Manager as _Manager
+from cif.utils.manager import Manager as _Manager
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
 # !/usr/bin/env python3
 
-import ujson as json
 import logging
 import zmq
 import textwrap
@@ -24,7 +23,7 @@ if TRACE == '1':
 
 logger = logging.getLogger(__name__)
 
-from cif.manager import Manager as _Manager
+from cif.utils.manager import Manager as _Manager
 
 
 class Manager(_Manager):

@@ -16,7 +16,7 @@ from cif.constants import GATHERER_ADDR, GATHERER_SINK_ADDR
 from cifsdk.msg import Msg
 from cifsdk.utils import load_plugins
 import cif.gatherer
-from cif.manager import Manager as _Manager
+from cif.utils.manager import Manager as _Manager
 
 
 RESOLVE_PEERS = os.getenv('CIF_GATHERER_PEERS', False)

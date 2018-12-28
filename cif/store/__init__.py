@@ -8,7 +8,6 @@ import ujson as json
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import yaml
-from pprint import pprint
 import arrow
 import zmq
 import time
@@ -18,14 +17,14 @@ from base64 import b64decode
 from csirtg_indicator import Indicator
 from cifsdk.msg import Msg
 from cif.constants import STORE_ADDR, STORE_WRITE_ADDR, STORE_WRITE_H_ADDR
-from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH, TOKEN
+from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cifsdk.utils import setup_logging, setup_signals, load_plugin
 from cif.utils import get_argument_parser
 
 from cif.utils.process import MyProcess
 import cif.store
-from cif.manager import Manager as _Manager
+from cif.utils.manager import Manager as _Manager
 from .ping import PingHandler
 from .token import TokenHandler
 
