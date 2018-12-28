@@ -76,24 +76,20 @@ class Router(object):
         self.terminate = False
         self.test = test
 
-        self.store = self._init_store(**kwargs)
-
-        self.gatherer_manager = self._init_gatherers(**kwargs)
+        self.listen = listen
 
         self.hunter_token = None
         if self.settings and self.settings.get('hunter_token'):
             self.hunter_token = self.settings['hunter_token']
 
-        self.hunters = self._init_hunters(**kwargs)
-        self.streamer = self._init_streamer()
-        self.webhooks = self._init_webhooks()
-
-        logger.info('launching frontend...')
         self.frontend_s = self.context.socket(zmq.ROUTER)
-        self.frontend_s.set_hwm(ZMQ_HWM)
-        self.frontend_s.bind(listen)
+        self.gatherer_manager = None
+        self.hunters = None
+        self.streamer = None
+        self.webhooks = None
+        self.store = None
 
-        self._init_pollers()
+        self.kwargs = kwargs
 
     def _init_webhooks(self):
         if not ROUTER_WEBHOOKS_ENABLED:
@@ -108,9 +104,8 @@ class Router(object):
         if not ROUTER_STREAM_ENABLED:
             return False
 
-        m = StreamManager(self.context)
-        m.start()
-        return m
+        self.streamer = StreamManager(self.context)
+        self.streamer.start()
 
     def _init_hunters(self, **kwargs):
         threads = kwargs.get('hunter_threads', HUNTER_THREADS)
@@ -119,18 +114,16 @@ class Router(object):
 
         logger.info('launching hunters...')
 
-        m = HunterManager(self.context, threads)
-        m.start()
-        return m
+        self.hunters = HunterManager(self.context, threads)
+        self.hunters.start()
 
     def _init_gatherers(self, **kwargs):
         logger.info('launching gatherers...')
 
         threads = kwargs.get('gatherer_threads', GATHERER_THREADS)
 
-        m = GathererManager(self.context, threads)
-        m.start()
-        return m
+        self.gatherer_manager = GathererManager(self.context, threads)
+        self.gatherer_manager.start()
 
     def _init_store(self, **kwargs):
         logger.info('launching store...')
@@ -138,21 +131,20 @@ class Router(object):
         store_address = kwargs.get('store_address', STORE_NODES)
         store_type = kwargs.get('store_type', STORE_DEFAULT)
 
-        m = StoreManager(self.context)
-        m.start(store_address=store_address, store_type=store_type)
+        self.store = StoreManager(self.context)
+        self.store.start(store_address=store_address, store_type=store_type)
 
         logger.info('Waiting for Store to initialize...')
         time.sleep(5)
         logger.info("Store Ready....")
 
-        return m
-
     def stop(self):
         self.terminate = True
         logger.debug('shutting down front end..')
 
-        self.frontend_s.close()
-        sleep(0.5)
+        if self.frontend_s:
+            self.frontend_s.close()
+            sleep(0.5)
 
         # hunters come first
         for m in ['hunters', 'gatherer_manager', 'streamer', 'webhooks',
@@ -161,6 +153,8 @@ class Router(object):
                 logger.debug(f"stopping {m}...")
                 getattr(self, m).stop()
                 sleep(0.5)
+
+
 
     def _init_pollers(self):
         self.poller = zmq.Poller()
@@ -206,6 +200,19 @@ class Router(object):
             self.handle_message(self.hunters.sink)
 
     def start(self):
+        self._init_store(**self.kwargs)
+        self._init_gatherers(**self.kwargs)
+
+        self._init_hunters(**self.kwargs)
+        self._init_streamer()
+        self._init_webhooks()
+
+        logger.info('launching frontend...')
+        self.frontend_s.set_hwm(ZMQ_HWM)
+        self.frontend_s.bind(self.listen)
+
+        self._init_pollers()
+
         logger.debug('starting loop')
 
         # we use this instead of a loop so we can make sure to get front end
@@ -270,7 +277,7 @@ class Router(object):
             s = json.dumps(d)
 
             if ROUTER_STREAM_ENABLED:
-                self.streamer.socket.send_string(s)
+                self.streamer.socket.send_multipart([s.encode('utf-8')])
 
             if ROUTER_WEBHOOKS_ENABLED:
                 self.webhooks.socket.send_string(s)
@@ -397,6 +404,8 @@ def main():
                store_nodes=args.store_nodes, hunter_token=args.hunter_token,
                hunter_threads=args.hunters, gatherer_threads=args.gatherers)
 
+
+
     try:
         pidfile = open(args.pidfile, 'w')
         pidfile.write(pid)
@@ -418,6 +427,7 @@ def main():
         logger.info('shutting down via SystemExit...')
 
     except Exception as e:
+        print("TEST")
         logger.critical(e)
         traceback.print_exc()
 
