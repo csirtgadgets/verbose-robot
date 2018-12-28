@@ -95,9 +95,8 @@ class Router(object):
         if not ROUTER_WEBHOOKS_ENABLED:
             return False
 
-        m = WebhooksManager(self.context)
-        m.start()
-        return m
+        self.webhooks = WebhooksManager(self.context)
+        self.webhooks.start()
 
     def _init_streamer(self):
         # CIF_ROUTER_STREAM_ENABLED=1|0
@@ -153,8 +152,6 @@ class Router(object):
                 logger.debug(f"stopping {m}...")
                 getattr(self, m).stop()
                 sleep(0.5)
-
-
 
     def _init_pollers(self):
         self.poller = zmq.Poller()

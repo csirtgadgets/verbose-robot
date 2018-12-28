@@ -1,14 +1,16 @@
 # !/usr/bin/env python3
 
-import ujson as json
 import logging
-import zmq
-from .utils.process import MyProcess
 import os
 import yaml
+import ujson as json
 import requests
+import zmq
+from zmq.eventloop import zmqstream, ioloop
 
 from cif.constants import ROUTER_WEBHOOKS_ADDR
+from cif.utils.manager import Manager as _Manager
+from .utils.process import MyProcess
 
 TRACE = os.getenv('CIF_WEBHOOK_TRACE', False)
 
@@ -19,8 +21,6 @@ if TRACE == '1':
     logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger(__name__)
-
-from cif.utils.manager import Manager as _Manager
 
 
 class Manager(_Manager):
@@ -40,8 +40,7 @@ class Webhooks(MyProcess):
             return
 
         if not os.path.exists('webhooks.yml'):
-            logger.error('webhooks.yml file is missing...')
-            return
+            raise FileNotFoundError('missing webhooks.yml')
 
         with open('webhooks.yml') as f:
             try:
@@ -49,8 +48,10 @@ class Webhooks(MyProcess):
             except yaml.YAMLError as exc:
                 logger.error(exc)
 
-    def is_search(self, data):
-        if data.get('indicator') and data.get('limit') and data.get('nolog', '0') == '0':
+    @staticmethod
+    def is_search(data):
+        if data.get('indicator') and data.get('limit') \
+                and data.get('nolog', '0') == '0':
             return True
 
         if not data.get('tags'):
@@ -65,10 +66,12 @@ class Webhooks(MyProcess):
         }
 
     def send(self, data):
-
         if len(self.hooks) == 0:
-            logger.info('no webhooks to send to... is your webhooks.yml missing?')
+            logger.info('no webhooks to send to... '
+                        'is your webhooks.yml missing?')
             return
+
+        data = json.loads(data[0])
 
         if not self.is_search(data):
             return
@@ -80,31 +83,32 @@ class Webhooks(MyProcess):
             if isinstance(data, dict):
                 data = json.dumps(data)
 
-            resp = requests.post(self.hooks[h], data=data, headers={'Content-Type': 'application/json'}, timeout=5)
+            resp = requests.Session().post(self.hooks[h], data=data,
+                                 headers={'Content-Type': 'application/json'},
+                                 timeout=5)
+
             logger.debug(resp.status_code)
             if resp.status_code not in [200, 201]:
                 logger.error(resp.text)
 
     def start(self):
-        context = zmq.Context()
+        loop = ioloop.IOLoop()
 
-        router = context.socket(zmq.PULL)
+        router = zmqstream.ZMQStream(zmq.Context().socket(zmq.PULL), loop)
+        router.on_recv(self.send)
         router.connect(ROUTER_WEBHOOKS_ADDR)
 
-        poller = zmq.Poller()
-        poller.register(router, zmq.POLLIN)
+        logger.debug('starting...')
 
-        while not self.exit.is_set():
-            try:
-                s = dict(poller.poll(1000))
-            except (SystemExit, KeyboardInterrupt):
-                break
+        try:
+            loop.start()
 
-            if router not in s:
-                continue
+        except KeyboardInterrupt:
+            # catch SIGINT
+            pass
 
-            data = router.recv_multipart()
-            logger.debug('got data..')
-            logger.debug(data)
+        except Exception as e:
+            logger.error(e)
 
-            self.send(json.loads(data[0]))
+        self.stop()
+
