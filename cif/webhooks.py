@@ -20,6 +20,20 @@ if TRACE == '1':
 
 logger = logging.getLogger(__name__)
 
+from cif.manager import Manager as _Manager
+
+
+class Manager(_Manager):
+
+    def __init__(self, context, threads=1):
+        _Manager.__init__(self, Webhooks, threads)
+
+        self.socket = context.socket(zmq.PUSH)
+        self.socket.bind(ROUTER_WEBHOOKS_ADDR)
+
+    def teardown(self):
+        self.socket.close()
+
 
 class Webhooks(MyProcess):
     def __init__(self, **kwargs):
@@ -99,6 +113,3 @@ class Webhooks(MyProcess):
             self.send(json.loads(data[0]))
 
         router.close()
-        context.term()
-        del router
-        self.stop()

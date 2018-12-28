@@ -47,15 +47,6 @@ class Manager(_Manager):
         self.sink_s = context.socket(zmq.PULL)
         self.sink_s.bind(GATHERER_SINK_ADDR)
 
-    def teardown(self):
-        self.s.close()
-        self.sink_s.close()
-
-    def sink_message(self, items):
-        if self.sink_s in items and \
-                items[self.sink_s] == zmq.POLLIN:
-            return True
-
 
 class Gatherer(MyProcess):
     def __init__(self, pull=GATHERER_ADDR, push=GATHERER_SINK_ADDR, **kwargs):
@@ -129,11 +120,6 @@ class Gatherer(MyProcess):
 
             data = self.process(data)
             Msg(id=id, mtype=mtype, token=token, data=data).send(push_s)
-
-        # pull_s.close()
-        # push_s.close()
-        # context.term()
-        self.stop()
 
 
 def main():
