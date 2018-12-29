@@ -83,7 +83,7 @@ class Router(object):
             self.hunter_token = self.settings['hunter_token']
 
         self.frontend_s = self.context.socket(zmq.ROUTER)
-        self.gatherer_manager = None
+        self.gatherers = None
         self.hunters = None
         self.streamer = None
         self.webhooks = None
@@ -121,8 +121,8 @@ class Router(object):
 
         threads = kwargs.get('gatherer_threads', GATHERER_THREADS)
 
-        self.gatherer_manager = GathererManager(self.context, threads)
-        self.gatherer_manager.start()
+        self.gatherers = GathererManager(self.context, threads)
+        self.gatherers.start()
 
     def _init_store(self, **kwargs):
         logger.info('launching store...')
@@ -137,22 +137,6 @@ class Router(object):
         time.sleep(5)
         logger.info("Store Ready....")
 
-    def stop(self):
-        self.terminate = True
-        logger.debug('shutting down front end..')
-
-        if self.frontend_s:
-            self.frontend_s.close()
-            sleep(0.5)
-
-        # hunters come first
-        for m in ['hunters', 'gatherer_manager', 'streamer', 'webhooks',
-                  'store']:
-            if getattr(self, m):
-                logger.debug(f"stopping {m}...")
-                getattr(self, m).stop()
-                sleep(0.5)
-
     def _init_pollers(self):
         self.poller = zmq.Poller()
         self.poller_backend = zmq.Poller()
@@ -164,7 +148,7 @@ class Router(object):
         self.poller.register(self.store.s_hunter_write, Z_POLLIN)
 
         # setup the backend..
-        self.poller_backend.register(self.gatherer_manager.sink_s, Z_POLLIN)
+        self.poller_backend.register(self.gatherers.sink_s, Z_POLLIN)
 
         if self.hunters:
             self.poller_backend.register(self.hunters.sink, Z_POLLIN)
@@ -187,14 +171,89 @@ class Router(object):
     def _poll_backend(self):
         items = dict(self.poller_backend.poll(BACKEND_TIMEOUT))
 
-        if items.get(self.gatherer_manager.sink_s) == Z_POLLIN:
-            self.handle_message_gatherer(self.gatherer_manager.sink_s)
+        if items.get(self.gatherers.sink_s) == Z_POLLIN:
+            self.handle_message_gatherer(self.gatherers.sink_s)
 
         if not self.hunters:
             return
 
         if items.get(self.hunters.sink) == Z_POLLIN:
             self.handle_message(self.hunters.sink)
+
+    def _log_counter(self):
+        self.count += 1
+        if (self.count % 100) == 0:
+            t = (time.time() - self.count_start)
+            n = self.count / t
+            logger.info('processing {} msgs per {} sec'.format(round(n, 2), round(t, 2)))
+            self.count = 0
+            self.count_start = time.time()
+
+    def handle_message(self, s):
+        id, token, mtype, data = Msg().recv(s)
+
+        handler = self.handle_message_default
+        if mtype in ['indicators_create', 'indicators_search']:
+            handler = getattr(self, "handle_" + mtype)
+
+        logger.debug(f"handling message: {mtype}")
+
+        try:
+            handler(id, mtype, token, data)
+        except Exception as e:
+            logger.error(e)
+
+        self._log_counter()
+
+    def handle_message_default(self, id, mtype, token, data='[]'):
+        Msg(id=id, mtype=mtype, token=token, data=data).send(self.store.socket)
+
+    def handle_message_gatherer(self, s):
+        id, token, mtype, data = Msg().recv(s)
+
+        sock = self.store.s_write
+        if token == self.hunter_token:
+            sock = self.store.s_hunter_write
+
+        Msg(id=id, mtype=mtype, token=token, data=data).send(sock)
+
+        if not self.hunters and not self.streamer and not self.webhooks:
+            return
+
+        data = json.loads(data)
+        if isinstance(data, dict):
+            data = [data]
+
+        for d in data:
+            s = json.dumps(d)
+
+            if self.streamer:
+                self.streamer.socket.send_multipart([s.encode('utf-8')])
+
+            if self.webhooks:
+                self.webhooks.socket.send_string(s)
+
+            if self.hunters and int(d.get('confidence', 0)) \
+                    >= HUNTER_MIN_CONFIDENCE:
+                self.hunters.socket.send_string(s)
+
+    def handle_indicators_search(self, id, mtype, token, data):
+        self.handle_message_default(id, mtype, token, data)
+
+        # TODO- issue here with un-authorized messages, may need to
+        # re-think using store success/fail status
+        if self.hunters:
+            self.hunters.socket.send_string(data)
+
+        if self.streamer:
+            self.streamer.socket.send_string(data)
+
+        if self.webhooks:
+            self.webhooks.socket.send_string(data)
+
+    def handle_indicators_create(self, id, mtype, token, data):
+        Msg(id=id, mtype=mtype, token=token, data=data)\
+            .send(self.gatherers.s)
 
     def start(self):
         self._init_store(**self.kwargs)
@@ -224,80 +283,21 @@ class Router(object):
             if self.test:
                 break
 
-    def _log_counter(self):
-        self.count += 1
-        if (self.count % 100) == 0:
-            t = (time.time() - self.count_start)
-            n = self.count / t
-            logger.info('processing {} msgs per {} sec'.format(round(n, 2), round(t, 2)))
-            self.count = 0
-            self.count_start = time.time()
+    def stop(self):
+        self.terminate = True
+        logger.debug('shutting down front end..')
 
-    def handle_message_default(self, id, mtype, token, data='[]'):
-        Msg(id=id, mtype=mtype, token=token, data=data)\
-            .send(self.store.socket)
+        if self.frontend_s:
+            self.frontend_s.close()
+            sleep(0.5)
 
-    def handle_message(self, s):
-        id, token, mtype, data = Msg().recv(s)
-
-        handler = self.handle_message_default
-        if mtype in ['indicators_create', 'indicators_search']:
-            handler = getattr(self, "handle_" + mtype)
-
-        logger.debug(f"handling message: {mtype}")
-
-        try:
-            handler(id, mtype, token, data)
-        except Exception as e:
-            logger.error(e)
-
-        self._log_counter()
-
-    def handle_message_gatherer(self, s):
-        id, token, mtype, data = Msg().recv(s)
-
-        sock = self.store.s_write
-        if token == self.hunter_token:
-            sock = self.store.s_hunter_write
-
-        Msg(id=id, mtype=mtype, token=token, data=data).send(sock)
-
-        if self.hunters is False and not ROUTER_STREAM_ENABLED \
-                and not ROUTER_WEBHOOKS_ENABLED:
-            return
-
-        data = json.loads(data)
-        if isinstance(data, dict):
-            data = [data]
-
-        for d in data:
-            s = json.dumps(d)
-
-            if ROUTER_STREAM_ENABLED:
-                self.streamer.socket.send_multipart([s.encode('utf-8')])
-
-            if ROUTER_WEBHOOKS_ENABLED:
-                self.webhooks.socket.send_string(s)
-
-            if self.hunters and int(d.get('confidence', 0)) >= HUNTER_MIN_CONFIDENCE:
-                self.hunters.socket.send_string(s)
-
-    def handle_indicators_search(self, id, mtype, token, data):
-        self.handle_message_default(id, mtype, token, data)
-
-        # TODO- issue here with un-authorized messages, may need to re-think using store success/fail status
-        if self.hunters:
-            self.hunters.socket.send_string(data)
-
-        if ROUTER_STREAM_ENABLED:
-            self.streamer.socket.send_string(data)
-
-        if ROUTER_WEBHOOKS_ENABLED:
-            self.webhooks.socket.send_string(data)
-
-    def handle_indicators_create(self, id, mtype, token, data):
-        Msg(id=id, mtype=mtype, token=token, data=data)\
-            .send(self.gatherer_manager.s)
+        # hunters come first
+        for m in ['hunters', 'gatherers', 'streamer', 'webhooks',
+                  'store']:
+            if getattr(self, m):
+                logger.debug(f"stopping {m}...")
+                getattr(self, m).stop()
+                sleep(0.5)
 
 
 def main():
