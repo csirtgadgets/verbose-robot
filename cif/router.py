@@ -386,7 +386,7 @@ def main():
             logging.getLogger(i).setLevel(logging.WARNING)
 
     setup_runtime_path(args.runtime_path)
-    setup_signals(__name__)
+    #setup_signals(__name__)
 
     # http://stackoverflow.com/a/789383/7205341
     pid = str(os.getpid())
