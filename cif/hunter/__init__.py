@@ -7,6 +7,7 @@ import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import os
+from zmq.eventloop import ioloop, zmqstream
 
 from cifsdk.client.zmq import ZMQ as Client
 from cif.constants import HUNTER_ADDR, HUNTER_SINK_ADDR
@@ -62,6 +63,9 @@ class Hunter(MyProcess):
         self._init_token()
         self._init_exclude()
 
+        self.plugins = load_plugins(cif.hunter.__path__)
+        self.router = None
+
     def _init_token(self):
         if self.token:
             return
@@ -86,82 +90,79 @@ class Hunter(MyProcess):
             logger.debug('setting hunter to skip: {}/{}'.format(provider, tag))
             self.exclude[provider].add(tag)
 
-    def start(self):
-        plugins = load_plugins(cif.hunter.__path__)
+    def _process_message(self, message):
+        data = message
 
-        socket = zmq.Context().socket(zmq.PULL)
-        socket.SNDTIMEO = SNDTIMEO
-        socket.set_hwm(ZMQ_HWM)
-        socket.setsockopt(zmq.LINGER, 3)
+        data = json.loads(data[0])
 
-        socket.connect(HUNTER_ADDR)
+        if not isinstance(data, dict):
+            return
 
-        router = Client(remote=HUNTER_SINK_ADDR, token=self.token, nowait=True)
+        if not data.get('indicator'):
+            return
 
-        poller = zmq.Poller()
-        poller.register(socket, zmq.POLLIN)
+        if data['indicator'] in ["", 'localhost', 'example.com']:
+            return
 
-        while not self.exit.is_set():
-            data = []
-            indicators = []
+        # searches
+        if not data.get('itype'):
+            data = Indicator(
+                indicator=data['indicator'],
+                tags='search',
+                confidence=4,
+                group='everyone',
+                tlp='amber',
+            ).__dict__()
 
+        if not data.get('tags'):
+            data['tags'] = []
+
+        d = Indicator(**data)
+
+        if self.exclude.get(d.provider):
+            for t in d.tags:
+                if t in self.exclude[d.provider]:
+                    logger.debug('skipping: {}'.format(d.indicator))
+
+        for p in self.plugins:
             try:
-                s = dict(poller.poll(1000))
-            except (KeyboardInterrupt, SystemExit):
-                break
+                indicators = p.process(d)
 
-            if socket not in s:
-                continue
+                indicators = [i.__dict__() for i in indicators]
 
-            data = socket.recv_multipart()
-            data = json.loads(data[0])
-
-            logger.debug(data)
-
-            if isinstance(data, dict):
-                if not data.get('indicator'):
+                if len(indicators) == 0:
                     continue
 
-                # searches
-                if not data.get('itype'):
-                    data = Indicator(
-                        indicator=data['indicator'],
-                        tags='search',
-                        confidence=4,
-                        group='everyone',
-                        tlp='amber',
-                    ).__dict__()
+                self.router.indicators_create(indicators)
 
-                if not data.get('tags'):
-                    data['tags'] = []
+            except Exception as e:
+                logger.error(e)
+                logger.error('[{}] giving up on: {}'.format(p, d))
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    import traceback
+                    traceback.print_exc()
 
-            d = Indicator(**data)
+    def start(self):
+        loop = ioloop.IOLoop()
 
-            if d.indicator in ["", 'localhost', 'example.com']:
-                continue
+        s = zmq.Context().socket(zmq.PULL)
+        s.SNDTIMEO = SNDTIMEO
+        s.set_hwm(ZMQ_HWM)
+        s.setsockopt(zmq.LINGER, 3)
 
-            if self.exclude.get(d.provider):
-                for t in d.tags:
-                    if t in self.exclude[d.provider]:
-                        logger.debug('skipping: {}'.format(d.indicator))
+        socket = zmqstream.ZMQStream(s, loop)
 
-            for p in plugins:
-                try:
-                    indicators = p.process(d)
+        socket.on_recv(self._process_message)
+        socket.connect(HUNTER_ADDR)
 
-                    indicators = [i.__dict__() for i in indicators]
+        # this needs to be done here
+        self.router = Client(remote=HUNTER_SINK_ADDR, token=self.token,
+                             nowait=True)
 
-                    if len(indicators) == 0:
-                        continue
-
-                    router.indicators_create(indicators)
-
-                except Exception as e:
-                    logger.error(e)
-                    logger.error('[{}] giving up on: {}'.format(p, d))
-                    if logger.getEffectiveLevel() == logging.DEBUG:
-                        import traceback
-                        traceback.print_exc()
+        try:
+            loop.start()
+        except KeyboardInterrupt:
+            pass
 
 
 def main():
