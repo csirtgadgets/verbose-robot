@@ -135,6 +135,9 @@ class Hunter(MyProcess):
 
                 self.router.indicators_create(indicators)
 
+            except KeyboardInterrupt:
+                break
+
             except Exception as e:
                 logger.error(e)
                 logger.error('[{}] giving up on: {}'.format(p, d))
@@ -161,8 +164,9 @@ class Hunter(MyProcess):
 
         try:
             loop.start()
-        except KeyboardInterrupt:
-            pass
+
+        except KeyboardInterrupt as e:
+            loop.stop()
 
 
 def main():

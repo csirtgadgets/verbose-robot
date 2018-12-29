@@ -1,5 +1,6 @@
 # make sure the CSIRTG_TOKEN envvar is set with your API token
 # sign up and get a FREE token at https://csirtg.io
+limit: 250
 
 feeds:
   # A feed of IP addresses block by a firewall (e.g. port scanners)
@@ -19,12 +20,12 @@ feeds:
     defaults:
       tags: uce
 
+
   # A feed of IP addresses seen delivering UCE email. This could be a machine that
   # is compromised or a user account has been compromised and used to send UCE.
   csirtgadgets/uce-ip:
     defaults:
       tags: uce
-
 
   # see https://csirtg.io/marketplace
   # subscription based feeds
