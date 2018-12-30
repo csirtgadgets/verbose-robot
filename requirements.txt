@@ -29,15 +29,14 @@ websocket-client>=0.44,<1
 lxml<4.0
 pyyaml
 
-csirtg_indicator>=2.0a19,<3.0
+csirtg_indicator==2.0a21
 
 tensorflow==1.8
 pendulum==2.0.3
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg-ipsml-tf
-csirtg-fm>=1.0a10
-#https://github.com/csirtgadgets/fuzzy-chainsaw/archive/master.zip
+csirtg-fm==1.0a11
 
 
 #cifsdk>=4.0,<5.0
