@@ -27,6 +27,7 @@ WORKDIR /tmp/verbose-robot
 
 RUN easy_install distribute
 RUN pip3 install -r dev_requirements.txt
+
 RUN DISABLE_PREDICT_IPV4=1 python3 setup.py test
 RUN CIF_ENABLE_INSTALL=1 python3 setup.py install
 
@@ -35,8 +36,8 @@ RUN rm -rf /tmp/verbose-robot
 RUN pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
 RUN pip3 install csirtgsdk
 
-RUN echo 'cif             soft    nofile            20000' >> /etc/security/limits.conf
-RUN echo 'cif             hard    nofile            30000' >> /etc/security/limits.conf
+RUN echo 'cif             soft    nofile            90000' >> /etc/security/limits.conf
+RUN echo 'cif             hard    nofile            100000' >> /etc/security/limits.conf
 
 RUN useradd cif
 
