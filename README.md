@@ -13,14 +13,11 @@ $ cif -d -p
 $ env | grep CIF_TOKEN
 ```
 
-# Need More Advanced Help?
+# Value for Value
 
-https://csirtg.io/support
+Did you learn something new? Are you getting value from CIF?
 
- * Augment your developer cycles, spend less time on customization.
- * Influence over future features at a fraction of the cost of custom building.
- * Lessons learned from 10+ years of industry wide experience.
- * Solve problems faster.
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YZPQXDLNYZZ3W)
 
 # Design Goals
 
