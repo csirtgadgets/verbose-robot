@@ -15,9 +15,9 @@ $ env | grep CIF_TOKEN
 
 # Are you getting value from CIF?
 
-Did you learn something new? Something that would have taken you weeks or months to learn on your own?
-
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=YZPQXDLNYZZ3W)
+
+Did you learn something new? Something that would have taken you weeks or months to learn on your own?
 
 # Design Goals
 
