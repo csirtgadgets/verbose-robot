@@ -8,7 +8,6 @@
     - "vars/main.yml"
 
   vars:
-    - CIF_VERSION: '4.0.0a6'
     - cif_build_sdist: "{{ lookup('env', 'CIF_ANSIBLE_SDIST') | default() }}"
 
   pre_tasks:
