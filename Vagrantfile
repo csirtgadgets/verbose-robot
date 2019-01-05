@@ -10,6 +10,7 @@ hunter_threads=ENV['CIF_HUNTER_THREADS']
 hunter_advanced=ENV['CIF_HUNTER_ADVANCED']
 csirtg_token=ENV['CSIRTG_TOKEN']
 cif_token=ENV['CIF_TOKEN']
+cif_version=ENV['CIF_VERSION']
 
 RUN_TESTS=ENV.fetch('TESTS', '')
 
@@ -20,6 +21,7 @@ export CIF_HUNTER_ADVANCED=#{hunter_advanced}
 export CIF_BOOTSTRAP_TEST=1
 export CSIRTG_TOKEN=#{csirtg_token}
 export CIF_TOKEN=#{cif_token}
+export CIF_VERSION=#{cif_version}
 
 cd /vagrant/deploymentkit
 
