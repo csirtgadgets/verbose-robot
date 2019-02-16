@@ -97,7 +97,8 @@ class IndicatorList(Resource):
 
     def _pull(self, filters):
         try:
-            r = Client(ROUTER_ADDR, session['token']).indicators_search(filters)
+            with Client(ROUTER_ADDR, session['token']) as client:
+                r = client.indicators_search(filters)
 
         except InvalidSearch as e:
             return api.abort(400)
@@ -256,7 +257,9 @@ class IndicatorList(Resource):
             if int(request.headers['Content-Length']) > 5000:
                 fireball = True
         try:
-            r = Client(ROUTER_ADDR, session['token']).indicators_create(request.data, nowait=nowait, fireball=fireball)
+            with Client(ROUTER_ADDR, session['token']) as cli:
+                r = cli.indicators_create(request.data, nowait=nowait,
+                                          fireball=fireball)
             if nowait:
                 r = {'message': 'pending'}
 

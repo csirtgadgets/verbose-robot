@@ -22,9 +22,11 @@ class Ping(Resource):
     def _ping(self, write=False):
         try:
             if write:
-                r = Client(ROUTER_ADDR, session['token']).ping_write()
+                with Client(ROUTER_ADDR, session['token']) as cli:
+                    r = cli.ping_write()
             else:
-                r = Client(ROUTER_ADDR, session['token']).ping()
+                with Client(ROUTER_ADDR, session['token']) as cli:
+                    r = cli.ping()
 
         except TimeoutError:
             return api.abort(408)
