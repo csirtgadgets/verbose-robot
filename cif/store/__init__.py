@@ -13,6 +13,8 @@ import zmq
 import time
 import traceback
 from base64 import b64decode
+from importlib import import_module
+from pprint import pprint
 
 from csirtg_indicator import Indicator
 from cifsdk.msg import Msg
@@ -72,7 +74,8 @@ class Manager(_Manager):
 
 
 class Store(MyProcess):
-    def __init__(self, store_type=STORE_DEFAULT, store_address=STORE_ADDR, **kwargs):
+    def __init__(self, store_type=STORE_DEFAULT, store_address=STORE_ADDR,
+                 **kwargs):
         MyProcess.__init__(self)
 
         self.store_addr = store_address
@@ -98,8 +101,18 @@ class Store(MyProcess):
         self.token_handler = TokenHandler(self.store)
 
     def _load_plugin(self, **kwargs):
-        logger.debug('store is: {}'.format(self.store))
+        # logger.debug('store is: {}'.format(self.store))
         p = load_plugin(cif.store.__path__, self.store)
+
+        if p is None:
+            p = f"cif_{self.store}"
+            p = import_module(p)
+
+            if p is None:
+                raise ImportError(f"{self.store} Not Found")
+
+            p = p.Plugin
+
         self.store = p(**kwargs)
 
     def _check_create_queue(self, last_flushed):
@@ -151,7 +164,7 @@ class Store(MyProcess):
             group=t['groups'][0],
             count=1,
         )
-        self.store.indicators.upsert(t, [s.__dict__()])
+        self.store.indicators.create(t, [s.__dict__()])
 
     def _flush_create_queue(self):
         for t in self.create_queue:
@@ -373,11 +386,12 @@ class Store(MyProcess):
 
         return MORE_DATA_NEEDED
 
-    def handle_indicators_create(self, token, data, id=None, client_id=None, flush=False):
+    def handle_indicators_create(self, token, data, id=None, client_id=None,
+                                 flush=False, force=False):
         # this will raise AuthError if false
         t = self.store.tokens.write(token)
 
-        if len(data) == 1:
+        if len(data) == 1 and not force:
             # queue it..
             data = data[0]
 
@@ -396,7 +410,7 @@ class Store(MyProcess):
             self._check_indicator(i, t)
             self._cleanup_indicator(i)
 
-        return self.store.indicators.upsert(t, data, flush=flush)
+        return self.store.indicators.create(t, data, flush=flush)
 
     def handle_indicators_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
