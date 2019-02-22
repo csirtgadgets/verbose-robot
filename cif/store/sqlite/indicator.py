@@ -273,7 +273,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             if not i.get(f):
                 raise ValueError("Missing required field: {} for \n{}".format(f, i))
 
-    def create(self, token, data):
+    def create(self, token, data, **kwargs):
         return self.upsert(token, data)
 
     def _filter_indicator(self, filters, s):

@@ -31,7 +31,9 @@ from cif.utils.manager import Manager as _Manager
 from .ping import PingHandler
 from .token import TokenHandler
 
-MOD_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+MOD_PATH = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
+
 STORE_PATH = os.path.join(MOD_PATH, "store")
 RCVTIMEO = 5000
 SNDTIMEO = 2000
@@ -39,9 +41,13 @@ LINGER = 3
 MORE_DATA_NEEDED = -2
 
 STORE_DEFAULT = os.environ.get('CIF_STORE_STORE', 'sqlite')
-STORE_PLUGINS = ['cif.store.dummy', 'cif.store.sqlite', 'cif.store.elasticsearch']
-CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)  # seconds to flush the queue [interval]
-CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)  # num of records before we start throttling a token
+STORE_PLUGINS = ['cif.store.sqlite', 'cif.store.elasticsearch']
+
+# seconds to flush the queue [interval]
+CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)
+
+# num of records before we start throttling a token
+CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)
 
 # seconds of in-activity before we remove from the penalty box
 CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 5)
@@ -469,17 +475,15 @@ def main():
         parents=[p]
     )
 
-    p.add_argument("--store-address", help="specify the store address cif-router is listening on[default: %("
-                                           "default)s]", default=STORE_ADDR)
-
-    p.add_argument("--store", help="specify a store type {} [default: %(default)s]".format(', '.join(STORE_PLUGINS)),
+    p.add_argument("--store", help="store type {} [default: %(default)s]".
+                   format(', '.join(STORE_PLUGINS)),
                    default=STORE_DEFAULT)
 
-    p.add_argument('--nodes')
+    p.add_argument('--config', help='specify config path [default %(default)s]'
+                   , default=CONFIG_PATH)
 
-    p.add_argument('--config', help='specify config path [default %(default)s]', default=CONFIG_PATH)
-
-    p.add_argument('--token-create-admin', help='generate an admin token', action="store_true")
+    p.add_argument('--token-create-admin', help='generate an admin token',
+                   action="store_true")
     p.add_argument('--token-create-fm', action="store_true")
     p.add_argument('--token-create-fm-remote', default=REMOTE_ADDR)
     p.add_argument('--token-create-hunter', action="store_true")
@@ -487,7 +491,8 @@ def main():
 
     p.add_argument('--config-path', help='store the token as a config')
     p.add_argument('--token', help='specify the token to use', default=None)
-    p.add_argument('--token-groups', help="specify groups associated with token [default %(default)s]'",
+    p.add_argument('--token-groups',
+                   help="groups associated with token [default %(default)s]'",
                    default='everyone')
 
     p.add_argument('--remote', help='specify remote')
@@ -497,11 +502,11 @@ def main():
     groups = args.token_groups.split(',')
 
     setup_logging(args)
-    logger.info('loglevel is: {}'.format(logging.getLevelName(logger.getEffectiveLevel())))
 
     setup_signals(__name__)
 
-    if not args.token_create_fm and not args.token_create_admin and not args.token_create_hunter and not \
+    if not args.token_create_fm and not args.token_create_admin and \
+            not args.token_create_hunter and not \
             args.token_create_httpd:
         logger.error('missing required arguments, see -h for more information')
         raise SystemExit

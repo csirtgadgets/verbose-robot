@@ -63,7 +63,8 @@ def feed_factory(name):
 
 logger = logging.getLogger('cif-httpd')
 
-itypes = ['ipv4', 'ipv6', 'url', 'fqdn', 'sha1', 'sha256', 'sha512', 'email', 'asn']
+itypes = ['ipv4', 'ipv6', 'url', 'fqdn', 'sha1', 'sha256', 'sha512', 'email',
+          'asn']
 
 api = Namespace('indicators', description='Indicator related operations')
 
@@ -83,7 +84,8 @@ indicator = api.model('Indicator', {
     'portlist': fields.String,
     'protocol': fields.String,
     'expire_at': fields.DateTime,
-    'ttl': fields.Float(description='Time To Live [Days- use decimal for hours, minutes, etc]')
+    'ttl': fields.Float(
+        description='Time To Live [Days- use decimal for hours, minutes, etc]')
 })
 
 envelope = api.model('Envelope', {
@@ -183,7 +185,8 @@ class IndicatorList(Resource):
             filters['indicator'] = request.args.get('q')
 
         if not filters.get('confidence') \
-                and not filters.get('no_feed', '0') == '1' and not filters.get('indicator'):
+                and not filters.get('no_feed', '0') == '1' \
+                and not filters.get('indicator'):
             filters['confidence'] = CONFIDENCE_DEFAULT
 
         return filters
@@ -206,11 +209,13 @@ class IndicatorList(Resource):
 
         logger.debug(filters)
 
-        if not filters.get('indicator') and not filters.get('tags') and not filters.get('itype'):
+        if not filters.get('indicator') and not filters.get('tags') and \
+                not filters.get('itype'):
             return {'message': 'q OR tags|itype params required'}, 400
 
         if current_app.config.get('dummy'):
-            return {'status': 'success', 'data': [{'indicator': filters['indicator']}]}
+            return {'status': 'success', 'data':
+                [{'indicator': filters['indicator']}]}
 
         if filters.get('indicator') or filters.get('no_feed', '0') == '1':
             if filters.get('no_feed'):

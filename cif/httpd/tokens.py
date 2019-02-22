@@ -51,7 +51,9 @@ class TokenList(Resource):
 
         # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_search(filters=f)
+            with Client(ROUTER_ADDR, session['token']) as cli:
+                return cli.tokens_search(filters=f)
+
         except TimeoutError:
             return api.abort(408)
 
@@ -68,7 +70,8 @@ class TokenList(Resource):
 
         # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_create(request.data), 201
+            with Client(ROUTER_ADDR, session['token']) as cli:
+                return cli.tokens_create(request.data), 201
         except TimeoutError:
             return api.abort(408)
 
@@ -85,7 +88,8 @@ class TokenList(Resource):
 
         # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_delete(request.data)
+            with Client(ROUTER_ADDR, session['token']) as cli:
+                return cli.tokens_delete(request.data)
         except TimeoutError:
             return api.abort(408)
 
@@ -107,7 +111,8 @@ class Token(Resource):
 
         # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_search(filters={'id': id})
+            with Client(ROUTER_ADDR, session['token']) as cli:
+                return cli.tokens_search(filters={'id': id})
         except TimeoutError:
             return api.abort(408)
 
@@ -124,7 +129,8 @@ class Token(Resource):
 
         # noinspection PyUnreachableCode
         try:
-            return Client(ROUTER_ADDR, session['token']).tokens_update(request.data)
+            with Client(ROUTER_ADDR, session['token']) as cli:
+                return cli.tokens_update(request.data)
         except TimeoutError:
             return api.abort(408)
 
