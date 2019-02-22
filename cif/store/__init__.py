@@ -15,6 +15,7 @@ import traceback
 from base64 import b64decode
 from importlib import import_module
 from pprint import pprint
+from types import GeneratorType
 
 from csirtg_indicator import Indicator
 from cifsdk.msg import Msg
@@ -426,6 +427,9 @@ class Store(MyProcess):
                 traceback.print_exc()
 
             raise InvalidSearch('invalid search')
+
+        if isinstance(x, GeneratorType):
+            x = list(x)
 
         return x
 

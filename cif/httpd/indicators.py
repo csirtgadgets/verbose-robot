@@ -118,7 +118,8 @@ class IndicatorList(Resource):
         return r
 
     def _pull_feed(self, filters, agg=True):
-        if agg and not filters.get('reported_at') and not filters.get('days') and not filters.get('hours'):
+        if agg and not filters.get('reported_at') and not filters.get('days') \
+                and not filters.get('hours'):
             if not filters.get('itype'):
                 filters['days'] = str(DAYS_SHORT)
             else:
