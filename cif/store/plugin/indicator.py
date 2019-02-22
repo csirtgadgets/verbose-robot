@@ -7,20 +7,16 @@ class IndicatorManagerPlugin(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def search(self, data):
+    def search(self, token, filters, **kwargs):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def create(self, data):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def upsert(self, data):
+    def create(self, token, indicators, **kwargs):
         raise NotImplementedError
 
     def _check_token_groups(self, t, i):
         if not i.get('group'):
-            raise InvalidIndicator('missing group')
+            raise ValueError('missing group')
 
         if i['group'] not in t['groups']:
             raise AuthError('unable to write to %s' % i['group'])
