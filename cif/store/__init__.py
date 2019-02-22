@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import inspect
 import logging
-import os
 import textwrap
 import ujson as json
 from argparse import ArgumentParser
@@ -24,39 +22,16 @@ from cifsdk.constants import REMOTE_ADDR, CONFIG_PATH
 from cifsdk.exceptions import AuthError, InvalidSearch
 from cifsdk.utils import setup_logging, setup_signals, load_plugin
 from cif.utils import get_argument_parser
+from cif.hunter import CONFIG_PATH as ROUTER_CONFIG_PATH
 
 from cif.utils.process import MyProcess
 import cif.store
 from cif.utils.manager import Manager as _Manager
 from .ping import PingHandler
 from .token import TokenHandler
+from .helpers import _check_indicator, _cleanup_indicator
 
-MOD_PATH = os.path.dirname(
-    os.path.abspath(inspect.getfile(inspect.currentframe())))
-
-STORE_PATH = os.path.join(MOD_PATH, "store")
-RCVTIMEO = 5000
-SNDTIMEO = 2000
-LINGER = 3
-MORE_DATA_NEEDED = -2
-
-STORE_DEFAULT = os.environ.get('CIF_STORE_STORE', 'sqlite')
-STORE_PLUGINS = ['cif.store.sqlite', 'cif.store.elasticsearch']
-
-# seconds to flush the queue [interval]
-CREATE_QUEUE_FLUSH = os.environ.get('CIF_STORE_QUEUE_FLUSH', 5)
-
-# num of records before we start throttling a token
-CREATE_QUEUE_LIMIT = os.environ.get('CIF_STORE_QUEUE_LIMIT', 250)
-
-# seconds of in-activity before we remove from the penalty box
-CREATE_QUEUE_TIMEOUT = os.environ.get('CIF_STORE_TIMEOUT', 5)
-
-# queue max to flush before we hit CIF_STORE_QUEUE_FLUSH mark
-CREATE_QUEUE_MAX = os.environ.get('CIF_STORE_QUEUE_MAX', 1000)
-REQUIRED_ATTRIBUTES = ['group', 'provider', 'indicator', 'itype', 'tags']
-TRACE = os.environ.get('CIF_STORE_TRACE')
-GROUPS = ['everyone']
+from .constants import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.ERROR)
@@ -86,15 +61,9 @@ class Store(MyProcess):
         MyProcess.__init__(self)
 
         self.store_addr = store_address
-        self.store_write_addr = STORE_WRITE_ADDR
-        self.store_write_h_addr = STORE_WRITE_H_ADDR
         self.store = store_type
         self.kwargs = kwargs
         self.create_queue = {}
-        self.create_queue_flush = CREATE_QUEUE_FLUSH
-        self.create_queue_limit = CREATE_QUEUE_LIMIT
-        self.create_queue_wait = CREATE_QUEUE_TIMEOUT
-        self.create_queue_max = CREATE_QUEUE_MAX
         self.create_queue_count = 0
 
         self.router = None
@@ -108,7 +77,6 @@ class Store(MyProcess):
         self.token_handler = TokenHandler(self.store)
 
     def _load_plugin(self, **kwargs):
-        # logger.debug('store is: {}'.format(self.store))
         p = load_plugin(cif.store.__path__, self.store)
 
         if p is None:
@@ -126,8 +94,8 @@ class Store(MyProcess):
         if len(self.create_queue) == 0:
             return time.time()
 
-        if ((time.time() - last_flushed) <= self.create_queue_flush) \
-                and (self.create_queue_count < self.create_queue_max):
+        if ((time.time() - last_flushed) <= CREATE_QUEUE_FLUSH) \
+                and (self.create_queue_count < CREATE_QUEUE_MAX):
             return last_flushed
 
         self._flush_create_queue()
@@ -137,7 +105,8 @@ class Store(MyProcess):
 
             # if we've not seen activity, reset the counter
             if self.create_queue[t]['count'] > 0:
-                if (time.time() - self.create_queue[t]['last_activity']) > self.create_queue_wait:
+                if (time.time() - self.create_queue[t]['last_activity'])\
+                        > CREATE_QUEUE_TIMEOUT:
                     logger.debug('pruning {} from create_queue'.format(t))
                     del self.create_queue[t]
 
@@ -181,25 +150,24 @@ class Store(MyProcess):
             logger.debug('flushing queue...')
             data = [msg[0] for _, _, msg in self.create_queue[t]['messages']]
             _t = self.store.tokens.write(t)
+
             try:
-                start_time = time.time()
                 logger.info('inserting %d indicators..', len(data))
 
                 rv = self.store.indicators.upsert(_t, data)
-
-                n = len(data)
-                t_time = time.time() - start_time
-                logger.info('inserting %d indicators.. took %0.2f seconds (%0.2f/sec)', n, t_time, (n / t_time))
                 rv = {"status": "success", "data": rv}
 
             except AuthError as e:
                 rv = {'status': 'failed', 'message': 'unauthorized'}
 
             for id, client_id, _ in self.create_queue[t]['messages']:
-                Msg(id=id, client_id=client_id, mtype=Msg.INDICATORS_CREATE, data=rv)
+                Msg(id=id, client_id=client_id, mtype=Msg.INDICATORS_CREATE,
+                    data=rv)
 
             if rv['status'] == 'success':
-                self.store.tokens.update_last_activity_at(t, arrow.utcnow().datetime)
+                self.store.tokens.update_last_activity_at(t,
+                                                          arrow.utcnow()
+                                                          .datetime)
 
             logger.debug('queue flushed..')
 
@@ -213,15 +181,14 @@ class Store(MyProcess):
         if t:
             self.token_handler.token_create_fm(token=t)
 
-        from cif.hunter import CONFIG_PATH as ROUTER_CONFIG_PATH
         if not os.path.exists(ROUTER_CONFIG_PATH):
             t = self.token_handler.token_create_hunter()
             with open(ROUTER_CONFIG_PATH, 'w') as f:
                 f.write('hunter_token: %s' % t)
 
         self.router.connect(self.store_addr)
-        self.router_write.connect(self.store_write_addr)
-        self.router_write_h.connect(self.store_write_h_addr)
+        self.router_write.connect(STORE_WRITE_ADDR)
+        self.router_write_h.connect(STORE_WRITE_H_ADDR)
 
         poller = zmq.Poller()
         poller.register(self.router, zmq.POLLIN)
@@ -283,7 +250,6 @@ class Store(MyProcess):
 
     def handle_message(self, m):
         err = None
-        #logger.debug(m)
         id, client_id, token, mtype, data = m
 
         try:
@@ -351,37 +317,6 @@ class Store(MyProcess):
         if not err:
             self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
 
-    def _check_indicator(self, i, t):
-        if not i.get('group'):
-            i['group'] = t['groups'][0]
-
-        if not i.get('provider'):
-            i['provider'] = t['username']
-
-        if not i.get('tags'):
-            i['tags'] = 'suspicious'
-
-        if not i.get('reported_at'):
-            i['reported_at'] = arrow.utcnow().datetime
-
-        for e in REQUIRED_ATTRIBUTES:
-            if not i.get(e):
-                raise ValueError('missing %s' % e)
-
-        if i['group'] not in t['groups']:
-            raise AuthError('unable to write to %s' % i['group'])
-
-        return True
-
-    def _cleanup_indicator(self, i):
-        if not i.get('message'):
-            return
-
-        try:
-            i['message'] = b64decode(i['message'])
-        except Exception as e:
-            pass
-
     def _queue_indicator(self, id, token, data, client_id):
         if not self.create_queue.get(token):
             self.create_queue[token] = {'count': 0, "messages": []}
@@ -402,8 +337,8 @@ class Store(MyProcess):
             # queue it..
             data = data[0]
 
-            self._check_indicator(data, t)
-            self._cleanup_indicator(data)
+            _check_indicator(data, t)
+            _cleanup_indicator(data)
 
             logger.debug('queuing indicator...')
             return self._queue_indicator(id, token, data, client_id)
@@ -414,8 +349,8 @@ class Store(MyProcess):
 
         for i in data:
             # this will raise AuthError if the groups don't match
-            self._check_indicator(i, t)
-            self._cleanup_indicator(i)
+            _check_indicator(i, t)
+            _cleanup_indicator(i)
 
         return self.store.indicators.create(t, data, flush=flush)
 
@@ -454,7 +389,7 @@ class Store(MyProcess):
 
         return x
 
-    def handle_indicators_delete(self, token, data=None, id=None, client_id=None):
+    def handle_indicators_delete(self, token, data=None, **kwargs):
         t = self.store.tokens.admin(token)
         return self.store.indicators.delete(t, data=data)
 
@@ -465,7 +400,6 @@ def main():
         description=textwrap.dedent('''\
          Env Variables:
             CIF_RUNTIME_PATH
-            CIF_STORE_ADDR
 
         example usage:
             $ cif-store -d
@@ -515,7 +449,8 @@ def main():
         with Store(store_type=args.store, nodes=args.nodes) as s:
             s._load_plugin(store_type=args.store, nodes=args.nodes)
 
-            t = s.token_handler.token_create_fm(token=args.token, groups=groups)
+            t = s.token_handler.token_create_fm(token=args.token,
+                                                groups=groups)
             if t:
                 data = {'token': t}
                 if args.remote:
@@ -525,13 +460,14 @@ def main():
                     with open(args.config_path, 'w') as f:
                         f.write(yaml.dump(data, default_flow_style=False))
 
-                logger.info('token config generated: {}'.format(args.token_create_fm))
+                logger.info(f'token config generated: {args.token_create_fm}')
             else:
                 logger.error('token not created')
 
     if args.token_create_hunter:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            t = s.token_handler.token_create_hunter(token=args.token, groups=groups)
+            t = s.token_handler.token_create_hunter(token=args.token,
+                                                    groups=groups)
             if t:
                 data = {'token': t}
 
@@ -539,13 +475,15 @@ def main():
                     with open(args.config_path, 'w') as f:
                         f.write(yaml.dump(data, default_flow_style=False))
 
-                logger.info('token config generated: {}'.format(args.token_create_hunter))
+                logger.info(f'token config generated: '
+                            f'{args.token_create_hunter}')
             else:
                 logger.error('token not created')
 
     if args.token_create_admin:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            t = s.token_handler.token_create_admin(token=args.token, groups=groups)
+            t = s.token_handler.token_create_admin(token=args.token,
+                                                   groups=groups)
             if t:
                 data = {'token': t}
 
@@ -553,13 +491,15 @@ def main():
                     with open(args.config_path, 'w') as f:
                         f.write(yaml.dump(data, default_flow_style=False))
 
-                logger.info('token config generated: {}'.format(args.token_create_admin))
+                logger.info('token config generated: {}'
+                            .format(args.token_create_admin))
             else:
                 logger.error('token not created')
 
     if args.token_create_httpd:
         with Store(store_type=args.store, nodes=args.nodes) as s:
-            t = s.token_handler.token_create_httpd(token=args.token, groups=groups)
+            t = s.token_handler.token_create_httpd(token=args.token,
+                                                   groups=groups)
             if t:
                 data = {'token': t}
 
@@ -567,7 +507,8 @@ def main():
                     with open(args.config_path, 'w') as f:
                         f.write(yaml.dump(data, default_flow_style=False))
 
-                logger.info('token config generated: {}'.format(args.token_create_httpd))
+                logger.info('token config generated: {}'
+                            .format(args.token_create_httpd))
             else:
                 logger.error('token not created')
 
