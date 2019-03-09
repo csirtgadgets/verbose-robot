@@ -160,13 +160,15 @@ class Hunter(MyProcess):
 
         # this needs to be done here
         self.router = Client(remote=HUNTER_SINK_ADDR, token=self.token,
-                             nowait=True)
+                             nowait=True, autoclose=False)
 
         try:
             loop.start()
 
         except KeyboardInterrupt as e:
             loop.stop()
+
+        self.router.socket.close()
 
 
 def main():
