@@ -88,6 +88,7 @@ class Router(object):
         self.streamer = None
         self.webhooks = None
         self.store = None
+        self.gtmp = None
 
         self.kwargs = kwargs
 
@@ -220,11 +221,11 @@ class Router(object):
         if not self.hunters and not self.streamer and not self.webhooks:
             return
 
-        data = json.loads(data)
-        if isinstance(data, dict):
-            data = [data]
+        self.gtmp = json.loads(data)
+        if isinstance(self.gtmp, dict):
+            self.gtmp = [self.gtmp]
 
-        for d in data:
+        for d in self.gtmp:
             s = json.dumps(d)
 
             if self.streamer:
@@ -236,6 +237,8 @@ class Router(object):
             if self.hunters and int(d.get('confidence', 0)) \
                     >= HUNTER_MIN_CONFIDENCE:
                 self.hunters.socket.send_string(s)
+
+        self.gtmp = None
 
     def handle_indicators_search(self, id, mtype, token, data):
         self.handle_message_default(id, mtype, token, data)
