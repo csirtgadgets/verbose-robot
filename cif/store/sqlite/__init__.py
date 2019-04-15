@@ -16,8 +16,6 @@ from .indicator import Indicator, IndicatorManager
 
 DB_PATH = os.path.join(DATA_PATH, 'cifv4.db')
 
-DB_PATH = 'tmp/cifv4.db'
-
 logger = logging.getLogger(__name__)
 TRACE = os.environ.get('CIF_STORE_SQLITE_TRACE', '0')
 
