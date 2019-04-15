@@ -7,7 +7,7 @@ import re
 import logging
 import time
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index, func, and_
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils.types.url import URLType
@@ -39,13 +39,13 @@ class Indicator(Base):
     id = Column(Integer, primary_key=True)
     uuid = Column(String, index=True)
     indicator = Column(UnicodeText, index=True)
-    group = Column(String)
+    group = Column(String, index=True)
     itype = Column(String, index=True)
     tlp = Column(String)
     provider = Column(String, index=True)
     portlist = Column(String)
     asn_desc = Column(UnicodeText, index=True)
-    asn = Column(Float)
+    asn = Column(Float, index=True)
     cc = Column(String, index=True)
     prefix = Column(UnicodeText, index=True)
     protocol = Column(Integer)
@@ -353,22 +353,26 @@ class IndicatorManager(IndicatorManagerPlugin):
 
     def _filter_terms(self, filters, s):
 
-        for k, v in filters.items():
-            if k in ['nolog', 'days', 'hours', 'groups', 'limit', 'feed']:
+        idx = ['reported_at', 'itype', 'confidence', 'probability', 'provider', 'asn', 'cc', 'asn_desc',
+               'rdata', 'region', 'uuid', 'tags']
+
+        for k in idx:
+            # if k in ['nolog', 'days', 'hours', 'groups', 'limit', 'feed']:
+            #     continue
+
+            if not filters.get(k):
                 continue
+
+            v = filters[k]
 
             if k == 'reported_at':
                 if ',' in v:
                     start, end = v.split(',')
-                    s = s.filter(Indicator.reported_at >= arrow.get(start).datetime)
-                    s = s.filter(Indicator.reported_at <= arrow.get(end).datetime)
+                    s = s.filter(
+                        and_(Indicator.reported_at >= arrow.get(start).datetime,
+                             Indicator.reported_at <= arrow.get(end).datetime))
                 else:
                     s = s.filter(Indicator.reported_at >= arrow.get(v).datetime)
-
-            elif k == 'tags':
-                t = v.split(',')
-                s = s.outerjoin(Tag)
-                s = s.filter(or_(Tag.tag == tt for tt in t))
 
             elif k == 'confidence':
                 if ',' in str(v):
@@ -419,6 +423,11 @@ class IndicatorManager(IndicatorManagerPlugin):
 
             elif k == 'uuid':
                 s = s.filter(Indicator.uuid == v)
+
+            elif k == 'tags':
+                t = v.split(',')
+                s = s.outerjoin(Tag)
+                s = s.filter(or_(Tag.tag == tt for tt in t))
 
             else:
                 raise InvalidSearch('invalid filter: %s' % k)
