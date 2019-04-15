@@ -127,13 +127,10 @@ class Hunter(MyProcess):
         for p in self.plugins:
             try:
                 indicators = p.process(d)
-
                 indicators = [i.__dict__() for i in indicators]
 
                 if len(indicators) == 0:
                     continue
-
-                self.router.indicators_create(indicators)
 
             except KeyboardInterrupt:
                 break
@@ -141,6 +138,15 @@ class Hunter(MyProcess):
             except Exception as e:
                 logger.error(e)
                 logger.error('[{}] giving up on: {}'.format(p, d))
+                if logger.getEffectiveLevel() == logging.DEBUG:
+                    import traceback
+                    traceback.print_exc()
+
+            try:
+                self.router.indicators_create(indicators)
+
+            except Exception as e:
+                logger.error(e)
                 if logger.getEffectiveLevel() == logging.DEBUG:
                     import traceback
                     traceback.print_exc()
