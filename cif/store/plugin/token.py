@@ -67,7 +67,7 @@ class TokenManagerPlugin(object):
         if len(rv) == 0:
             raise AuthError('unauthorized')
 
-        self._cache[token] = rv[0]
+        self.update_last_activity_at(token)
         return rv[0]
 
     def admin(self, token):
