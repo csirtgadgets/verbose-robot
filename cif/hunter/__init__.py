@@ -124,23 +124,27 @@ class Hunter(MyProcess):
                 if t in self.exclude[d.provider]:
                     logger.debug('skipping: {}'.format(d.indicator))
 
+        indicators = []
         for p in self.plugins:
             try:
                 indicators = p.process(d)
                 indicators = [i.__dict__() for i in indicators]
 
-                if len(indicators) == 0:
-                    continue
-
             except KeyboardInterrupt:
                 break
 
             except Exception as e:
+                if 'SERVFAIL' in str(e):
+                    continue
+
                 logger.error(e)
                 logger.error('[{}] giving up on: {}'.format(p, d))
                 if logger.getEffectiveLevel() == logging.DEBUG:
                     import traceback
                     traceback.print_exc()
+
+            if len(indicators) == 0:
+                continue
 
             try:
                 self.router.indicators_create(indicators)
@@ -150,6 +154,8 @@ class Hunter(MyProcess):
                 if logger.getEffectiveLevel() == logging.DEBUG:
                     import traceback
                     traceback.print_exc()
+
+            indicators = []
 
     def start(self):
         loop = ioloop.IOLoop()
