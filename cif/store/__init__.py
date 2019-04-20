@@ -446,8 +446,8 @@ def main():
         raise SystemExit
 
     if args.token_create_fm:
-        with Store(store_type=args.store, nodes=args.nodes) as s:
-            s._load_plugin(store_type=args.store, nodes=args.nodes)
+        with Store(store_type=args.store) as s:
+            s._load_plugin(store_type=args.store)
 
             t = s.token_handler.token_create_fm(token=args.token,
                                                 groups=groups)
@@ -465,7 +465,7 @@ def main():
                 logger.error('token not created')
 
     if args.token_create_hunter:
-        with Store(store_type=args.store, nodes=args.nodes) as s:
+        with Store(store_type=args.store) as s:
             t = s.token_handler.token_create_hunter(token=args.token,
                                                     groups=groups)
             if t:
@@ -481,7 +481,7 @@ def main():
                 logger.error('token not created')
 
     if args.token_create_admin:
-        with Store(store_type=args.store, nodes=args.nodes) as s:
+        with Store(store_type=args.store) as s:
             t = s.token_handler.token_create_admin(token=args.token,
                                                    groups=groups)
             if t:
@@ -497,7 +497,7 @@ def main():
                 logger.error('token not created')
 
     if args.token_create_httpd:
-        with Store(store_type=args.store, nodes=args.nodes) as s:
+        with Store(store_type=args.store) as s:
             t = s.token_handler.token_create_httpd(token=args.token,
                                                    groups=groups)
             if t:
