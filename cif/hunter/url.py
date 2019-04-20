@@ -10,11 +10,11 @@ def process(i):
         return
 
     u = urlparse(i.indicator)
-    if not u.netloc:
+    if not u.hostname:
         return
 
     fqdn = i.copy(**{
-        'indicator': u.netloc,
+        'indicator': u.hostname,
         'rdata': i.indicator,
         'last_at': arrow.utcnow(),
         'reported_at': arrow.utcnow(),

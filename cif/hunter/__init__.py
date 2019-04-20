@@ -148,6 +148,8 @@ class Hunter(MyProcess):
                     import traceback
                     traceback.print_exc()
 
+                continue
+
             try:
                 self.router.indicators_create(indicators)
 
