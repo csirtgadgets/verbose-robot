@@ -59,9 +59,10 @@ def process(i):
 
         yield i2
 
-        pdns = i2.copy(tags=['pdns'], confidence=4.0, indicator=i2.rdata[0],
-                       rdata=ns)
-        yield pdns
+        if i2.rdata:
+            pdns = i2.copy(tags=['pdns'], confidence=4.0,
+                           indicator=i2.rdata[0], rdata=ns)
+            yield pdns
 
     for mx in i.get('mx', []):
         mx = re.sub(r'^\d+ ', '', mx)
