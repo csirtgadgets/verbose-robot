@@ -133,6 +133,11 @@ class Hunter(MyProcess):
             except KeyboardInterrupt:
                 break
 
+            except SystemExit:
+                # sometimes cifsdk/zmq in will throw a sysexit if we sigint
+                # and it's busy..
+                break
+
             except Exception as e:
                 if 'SERVFAIL' in str(e):
                     continue
@@ -143,7 +148,6 @@ class Hunter(MyProcess):
                     import traceback
                     traceback.print_exc()
 
-            if len(indicators) == 0:
                 continue
 
             try:

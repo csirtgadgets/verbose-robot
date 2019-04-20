@@ -6,7 +6,10 @@ ENABLED = os.getenv('CIF_HUNTER_ADVANCED', True)
 
 
 def process(i):
-    if not ENABLED or not i.is_fqdn():
+    if not ENABLED:
+        return
+
+    if not i.is_fqdn():
         return
 
     if 'pdns' in i.tags:
@@ -32,10 +35,12 @@ def process(i):
         if not ip.description:
             ip.description = i.tags[0]
 
-        pdns = ip.copy(tags=['pdns'], confidence=4.0, rdata=[i.indicator])
-
+        # this could be a url too, the var is mis-leading
         yield ip
-        yield pdns
+
+        if ip.is_ip():
+            pdns = ip.copy(tags=['pdns'], confidence=4.0, rdata=[i.indicator])
+            yield pdns
 
     for ns in i.get('ns', []):
         ns = ns.rstrip('.')
@@ -53,6 +58,11 @@ def process(i):
         i2.geo_resolve()
 
         yield i2
+
+        if i2.rdata:
+            pdns = i2.copy(tags=['pdns'], confidence=4.0,
+                           indicator=i2.rdata[0], rdata=ns)
+            yield pdns
 
     for mx in i.get('mx', []):
         mx = re.sub(r'^\d+ ', '', mx)

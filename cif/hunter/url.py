@@ -15,16 +15,15 @@ def process(i):
 
     fqdn = i.copy(**{
         'indicator': u.hostname,
-        'rdata': [i.indicator],
+        'rdata': i.indicator,
         'last_at': arrow.utcnow(),
         'reported_at': arrow.utcnow(),
         'confidence': 0,
     })
 
-    fqdn.geo_resolve()
-    fqdn.fqdn_resolve()
-
-    if i.confidence > 0:
-        fqdn.confidence = i.confidence - 1
+    if i.confidence == 1:
+        fqdn.confidence = 0
+    else:
+        fqdn.confidence = i.confidence - 2
 
     yield fqdn
