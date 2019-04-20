@@ -10,21 +10,20 @@ def process(i):
         return
 
     u = urlparse(i.indicator)
-    if not u.hostname:
+    if not u.netloc:
         return
 
     fqdn = i.copy(**{
-        'indicator': u.hostname,
-        'rdata': [i.indicator],
+        'indicator': u.netloc,
+        'rdata': i.indicator,
         'last_at': arrow.utcnow(),
         'reported_at': arrow.utcnow(),
         'confidence': 0,
     })
 
-    fqdn.geo_resolve()
-    fqdn.fqdn_resolve()
-
-    if i.confidence > 0:
-        fqdn.confidence = i.confidence - 1
+    if i.confidence == 1:
+        fqdn.confidence = 0
+    else:
+        fqdn.confidence = i.confidence - 2
 
     yield fqdn
