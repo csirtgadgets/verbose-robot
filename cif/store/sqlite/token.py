@@ -156,7 +156,7 @@ class TokenManager(TokenManagerPlugin):
 
         return True
 
-    def update_last_activity_at(self, token, timestamp):
+    def update_last_activity_at(self, token, timestamp=arrow.utcnow().datetime):
         if isinstance(timestamp, str):
             timestamp = arrow.get(timestamp).datetime
 

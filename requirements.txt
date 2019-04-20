@@ -29,14 +29,14 @@ websocket-client>=0.44,<1
 lxml<4.0
 pyyaml
 
-csirtg_indicator==2.0a21
+csirtg_indicator==2.0a22
 
 tensorflow==1.8
 pendulum==2.0.3
 csirtg-urlsml-tf
 csirtg-domainsml-tf
 csirtg-ipsml-tf
-csirtg-fm==1.0a11
+csirtg-fm==1.0a14
 
 
 #cifsdk>=4.0,<5.0
