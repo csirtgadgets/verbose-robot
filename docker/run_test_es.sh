@@ -13,7 +13,7 @@ echo ""
 echo "${CIF_TOKEN}"
 echo ""
 
-C=$(docker run -e CIF_TOKEN="${CIF_TOKEN}" -e CIF_HUNTER_ADVANCED=1 -e CIF_HUNTER_THREADS=2 -e CIF_HUNTER_TRACE=1 -it -d -p 5000:5000 --name verbose-robot --memory 2g --memory-swap 4g -e CIF_STORE_STORE=elasticsearch -e CIF_ES_NODES=${CIF_ES_NODES} csirtgadgets/verbose-robot)
+C=$(docker run -e CIF_STORE_STORE="elasticsearch" -e CIF_ES_NODES=${CIF_ES_NODES} -e CIF_TOKEN="${CIF_TOKEN}" -e CIF_HUNTER_ADVANCED=1 -e CIF_HUNTER_THREADS=2 -e CIF_HUNTER_TRACE=1 -it -d -p 5000:5000 --name verbose-robot --memory 2g --memory-swap 4g csirtgadgets/verbose-robot)
 
 bash docker/test.sh
 
