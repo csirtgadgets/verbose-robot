@@ -42,5 +42,3 @@ def test_hunter_plugins():
 
         rv = [i.__dict__() for i in rv]
         count += len(rv)
-
-    #assert count > 0
