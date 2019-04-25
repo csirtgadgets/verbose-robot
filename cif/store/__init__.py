@@ -356,7 +356,15 @@ class Store(MyProcess):
 
     def handle_indicators_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
-        self._log_search(t, data)
+
+        try:
+            self._log_search(t, data)
+
+        except TypeError:
+            raise InvalidSearch('invalid search')
+
+        except Exception as e:
+            logger.error(e)
 
         try:
             x = self.store.indicators.search(t, data)
