@@ -16,7 +16,9 @@ DISABLE_PREDICT_IPV4 = os.getenv('DISABLE_PREDICT_IPV4', False)
 def test_predict_ipv4():
     indicators = []
     for d in range(0, 25):
-        indicators.append(Indicator(str(fake.ipv4()), reported_at=arrow.utcnow(), resolve_geo=True))
+        indicators.append(Indicator(str(fake.ipv4()),
+                                    reported_at=arrow.utcnow(),
+                                    resolve_geo=True))
 
     pprint(indicators)
     indicators = predict_ips(indicators)
@@ -46,7 +48,8 @@ def test_predict_url():
 def test_predict_fqdn():
     indicators = []
     for d in range(0, 25):
-        indicators.append(Indicator(str(fake.domain_name(2)), resolve_geo=True))
+        indicators.append(Indicator(str(fake.domain_name(2)),
+                                    resolve_geo=True))
 
     indicators = predict_fqdns(indicators)
     pprint(indicators)

@@ -40,7 +40,8 @@ def test_httpd_routes(client):
 
 
 def test_httpd_search(client):
-    rv = client.get('/indicators/?q=example.com', headers={'Authorization': '1234'})
+    rv = client.get('/indicators/?q=example.com',
+                    headers={'Authorization': '1234'})
     assert rv.status_code == 200
 
     data = rv.data
@@ -50,7 +51,8 @@ def test_httpd_search(client):
 
 
 def test_httpd_predict(client):
-    rv = client.get('/predict/?q=csirtgadgets.com', headers={'Authorization': '1234'})
+    rv = client.get('/predict/?q=csirtgadgets.com',
+                    headers={'Authorization': '1234'})
     assert rv.status_code == 200
 
     data = rv.data

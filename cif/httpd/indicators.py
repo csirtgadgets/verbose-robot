@@ -268,6 +268,12 @@ class IndicatorList(Resource):
                                           fireball=fireball)
             if nowait:
                 r = {'message': 'pending'}
+            else:
+                count = 0
+                if isinstance(r, list):
+                    for rr in r:
+                        count += rr.get('data', 0)
+                    r = count
 
         except SubmissionFailed as e:
             logger.error(e)

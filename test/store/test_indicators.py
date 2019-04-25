@@ -1,21 +1,15 @@
 import logging
-import os
-import tempfile
 from argparse import Namespace
 import pytest
-from cif.store import Store
 from cifsdk.utils import setup_logging
 import arrow
-from datetime import datetime
-from pprint import pprint
+from test.store.test_basics import store, indicator
+
 
 args = Namespace(debug=True, verbose=None)
 setup_logging(args)
 
 logger = logging.getLogger(__name__)
-
-
-from test.store.test_basics import store, indicator
 
 
 def test_indicators_create(store, indicator):
