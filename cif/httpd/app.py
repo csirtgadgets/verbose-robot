@@ -17,7 +17,7 @@ monkey.patch_all()
 from flask import Flask, request, _request_ctx_stack, session, make_response
 from flask_cors import CORS
 from flask_compress import Compress
-from flask_restplus import Api, Namespace
+from flask_restplus import Api
 from werkzeug.contrib.fixers import ProxyFix
 from flask_sockets import Sockets
 
@@ -48,7 +48,7 @@ Compress(app)
 sockets = Sockets(app)
 
 authorizations = {
-    'token': {
+    'apikey': {
         'type': 'apiKey',
         'in': 'header',
         'name': 'Authorization'
@@ -56,7 +56,8 @@ authorizations = {
 }
 
 # http://flask-restplus.readthedocs.io/en/stable/swagger.html#documenting-authorizations
-api = Api(app, version='4.0', title='CIFv4 API', description='The CIFv4 REST API', authorizations=authorizations,
+api = Api(app, version='4.0', title='CIFv4 API',
+          description='The CIFv4 REST API', authorizations=authorizations,
           security='apikey')
 
 
@@ -105,6 +106,7 @@ def pull_token():
         return
 
     return t
+
 
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
 # need to thread this out in dev mode
