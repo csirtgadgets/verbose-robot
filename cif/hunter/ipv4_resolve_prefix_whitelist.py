@@ -13,7 +13,8 @@ def process(i):
     i2 = i.copy(**{
         'indicator': i.ipv4_to_prefix(),
         'tags': ['whitelist'],
-        'confidence': 2
+        'confidence': 2,
+        'count': 1,
     })
 
     yield i2
