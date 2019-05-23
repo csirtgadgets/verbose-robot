@@ -36,7 +36,7 @@ RUN rm -rf /tmp/verbose-robot
 RUN pip3 install https://github.com/Supervisor/supervisor/archive/85558b4c86b4d96bd47e267489c208703f110f0f.zip
 RUN pip3 install csirtgsdk
 RUN pip3 install 'elasticsearch-dsl>=6.3,<7.0'
-RUN pip3 install https://github.com/csirtgadgets/verbose-robot-elasticsearch/archive/4.0a2.tar.gz
+RUN pip3 install https://github.com/csirtgadgets/verbose-robot-elasticsearch/archive/4.0a3.tar.gz
 
 RUN echo 'cif             soft    nofile            90000' >> /etc/security/limits.conf
 RUN echo 'cif             hard    nofile            100000' >> /etc/security/limits.conf
