@@ -34,8 +34,8 @@ docker exec -it verbose-robot cif -q 93.184.216.34
 declare -a CMDS=(
     "-r /etc/cif/rules/default/openphish.yml -d --client cif --limit 100 --skip-invalid"
     "-r /etc/cif/rules/default/openphish.yml -d --client cif --limit 100 --skip-invalid"
-    "-r /etc/cif/rules/default/csirtg.yml -f darknet -d --remember --client cif --limit 100 --skip-invalid"
-    "-r /etc/cif/rules/default/csirtg.yml -f uce-urls -d --remember --client cif --limit 100 --skip-invalid"
+    "-r /etc/cif/rules/default/csirtg.yml -f csirtgadgets/darknet -d --remember --client cif --limit 100 --skip-invalid"
+    "-r /etc/cif/rules/default/csirtg.yml -f csirtgadgets/uce-urls -d --remember --client cif --limit 100 --skip-invalid"
 )
 
 for i in "${CMDS[@]}"; do
