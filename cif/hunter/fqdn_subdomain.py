@@ -5,7 +5,8 @@ def process(i):
 
     i2 = i.copy(**{
         'indicator': i.is_subdomain(),
-        'confidence': 0
+        'confidence': 0,
+        'count': 1
     })
     i2.fqdn_resolve()
 

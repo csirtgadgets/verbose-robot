@@ -19,6 +19,7 @@ def process(i):
         'last_at': arrow.utcnow(),
         'reported_at': arrow.utcnow(),
         'confidence': 0,
+        'count': 1,
     })
 
     if i.confidence == 1:

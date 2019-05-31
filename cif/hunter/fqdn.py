@@ -47,6 +47,7 @@ def process(i):
         i2 = i.copy(**{
             'indicator': ns,
             'confidence': 0,
+            'count': 1,
             'ns': None,
             'mx': None,
             'rdata': None
@@ -70,6 +71,7 @@ def process(i):
         i2 = i.copy(**{
             'indicator': mx,
             'confidence': 0,
+            'count': 1,
             'ns': None,
             'mx': None,
             'rdata': None
@@ -86,6 +88,7 @@ def process(i):
         i2 = i.copy(**{
             'indicator': r,
             'confidence': 0,
+            'count': 1,
             'ns': None,
             'mx': None,
             'rdata': None
