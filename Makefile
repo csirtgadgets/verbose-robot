@@ -20,5 +20,8 @@ docker:
 docker-test:
 	@bash docker/run_test.sh
 
+docker-test-es:
+	@bash docker/run_test_es.sh
+
 vagrant:
 	@bash helpers/test_ubuntu16.sh

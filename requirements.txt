@@ -29,12 +29,13 @@ pyyaml
 
 csirtg_indicator==2.0a24
 
-tensorflow==1.8
+tensorflow==1.13.1
 pendulum==2.0.3
-csirtg-urlsml-tf
-csirtg-domainsml-tf
-csirtg-ipsml-tf
-csirtg-fm==1.0a14
+csirtg-urlsml-tf==0.0a5
+csirtg-domainsml-tf==0.0a5
+csirtg-ipsml-tf==0.0a10
+csirtg-fm==1.0a15
+apwgsdk==2.0a3
 
 
 #cifsdk==4.0a2
