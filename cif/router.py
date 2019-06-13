@@ -365,8 +365,7 @@ def main():
                    help='set logging to WARNING for specific modules')
 
     p.add_argument('--pidfile',
-                   help='specify pidfile location [default: %(default)s]',
-                   default=PIDFILE)
+                   help='specify pidfile location')
 
     args = p.parse_args()
     setup_logging(args)
@@ -392,7 +391,7 @@ def main():
     pid = str(os.getpid())
     logger.debug("pid: %s" % pid)
 
-    if os.path.isfile(args.pidfile):
+    if args.pidfile and os.path.isfile(args.pidfile):
         logger.critical("%s already exists, exiting" % args.pidfile)
         raise SystemExit
 
@@ -401,16 +400,15 @@ def main():
                store_nodes=args.store_nodes, hunter_token=args.hunter_token,
                hunter_threads=args.hunters, gatherer_threads=args.gatherers)
 
+    if args.pidfile:
+        try:
+            pidfile = open(args.pidfile, 'w')
+            pidfile.write(pid)
+            pidfile.close()
 
-
-    try:
-        pidfile = open(args.pidfile, 'w')
-        pidfile.write(pid)
-        pidfile.close()
-
-    except PermissionError as e:
-        logger.critical('unable to create pid %s' % args.pidfile)
-        raise SystemExit
+        except PermissionError as e:
+            logger.critical('unable to create pid %s' % args.pidfile)
+            raise SystemExit
 
     try:
         logger.info('starting router..')
@@ -432,7 +430,7 @@ def main():
     r.stop()
 
     logger.info('Shutting down')
-    if os.path.isfile(args.pidfile):
+    if args.pidfile and os.path.isfile(args.pidfile):
         os.unlink(args.pidfile)
 
 

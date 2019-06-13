@@ -115,6 +115,10 @@ class IndicatorList(Resource):
             logger.error(e)
             if logger.getEffectiveLevel() == logging.DEBUG:
                 traceback.print_exc()
+
+            if 'invalid search' in str(e):
+                return api.abort(400, str(e))
+
             return api.abort(500)
 
         return r
