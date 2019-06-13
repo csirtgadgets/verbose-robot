@@ -430,7 +430,7 @@ def main():
     r.stop()
 
     logger.info('Shutting down')
-    if os.path.isfile(args.pidfile):
+    if args.pidfile and os.path.isfile(args.pidfile):
         os.unlink(args.pidfile)
 
 

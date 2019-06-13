@@ -283,7 +283,7 @@ class Store(MyProcess):
             err = 'unauthorized'
 
         except InvalidSearch as e:
-            err = 'invalid search'
+            err = str(e)
 
         except ValueError as e:
             err = 'invalid indicator {}'.format(e)
@@ -375,7 +375,7 @@ class Store(MyProcess):
                 import traceback
                 traceback.print_exc()
 
-            raise InvalidSearch('invalid search')
+            raise InvalidSearch(f"invalid search: {e}")
 
         if isinstance(x, GeneratorType):
             x = list(x)
