@@ -34,7 +34,7 @@ pendulum==2.0.3
 csirtg-urlsml-tf==0.0a5
 csirtg-domainsml-tf==0.0a5
 csirtg-ipsml-tf==0.0a10
-csirtg-fm==1.0a15
+csirtg-fm==1.0a16
 apwgsdk==2.0a3
 
 
