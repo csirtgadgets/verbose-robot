@@ -368,6 +368,11 @@ class Store(MyProcess):
 
         try:
             x = self.store.indicators.search(t, data)
+
+        except TypeError as e:
+            logger.warning(e)
+            raise InvalidSearch(f"invalid search: {e}")
+
         except Exception as e:
             logger.error(e)
 

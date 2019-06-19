@@ -291,7 +291,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             itype = resolve_itype(i)
         except TypeError as e:
             logger.error(e)
-            s = s.join(Message).filter(Indicator.Message.like('%{}%'.format(i)))
+            s = s.join(Message).filter(Message.message.like('%{}%'.format(i)))
             return s
 
         if itype == 'email':
@@ -302,7 +302,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             return s
 
         if itype == 'ipv4':
-            ip = ipaddress.IPv4Network(i)
+            ip = ipaddress.IPv4Network(i, strict=False)
             mask = ip.prefixlen
 
             if mask < 8:
@@ -319,7 +319,7 @@ class IndicatorManager(IndicatorManagerPlugin):
             return s
 
         if itype == 'ipv6':
-            ip = ipaddress.IPv6Network(i)
+            ip = ipaddress.IPv6Network(i, strict=False)
             mask = ip.prefixlen
 
             if mask < 32:
