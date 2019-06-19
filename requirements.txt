@@ -27,7 +27,7 @@ websocket-client>=0.44,<1
 lxml<4.0
 pyyaml
 
-csirtg_indicator==2.0a24
+csirtg_indicator==2.0b0
 
 tensorflow==1.13.1
 pendulum==2.0.3
