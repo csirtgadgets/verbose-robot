@@ -227,7 +227,7 @@ class IndicatorList(Resource):
                 del filters['no_feed']
 
             # bulk search..
-            if ',' in filters['indicator']:
+            if ',' in filters.get('indicator', ''):
                 rv = []
                 indicators = filters['indicator'].split(',')
                 for i in indicators:
