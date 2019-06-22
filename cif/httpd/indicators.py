@@ -225,7 +225,19 @@ class IndicatorList(Resource):
         if filters.get('indicator') or filters.get('no_feed', '0') == '1':
             if filters.get('no_feed'):
                 del filters['no_feed']
-            return self._pull_feed(filters, agg=False), 200
+
+            # bulk search..
+            if ',' in filters['indicator']:
+                rv = []
+                indicators = filters['indicator'].split(',')
+                for i in indicators:
+                    filters['indicator'] = i
+                    rv += self._pull_feed(filters, agg=False)
+
+                return rv, 200
+
+            else:
+                return self._pull_feed(filters, agg=False), 200
 
         f = feed_factory(filters['itype'])
 
