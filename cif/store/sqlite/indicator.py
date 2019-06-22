@@ -451,7 +451,8 @@ class IndicatorManager(IndicatorManagerPlugin):
 
         s = self.handle().query(Indicator)
 
-        # if no tags are presented, users probably expect non special data in their results
+        # if no tags are presented, users probably expect non special data
+        # in their results
         if not myfilters.get('tags') and not myfilters.get('indicator'):
             s = s.outerjoin(Tag)
             s = s.filter(Tag.tag != 'pdns')

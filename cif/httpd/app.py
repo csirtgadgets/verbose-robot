@@ -7,6 +7,7 @@ import textwrap
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import zmq
+from json import loads, dumps
 import re
 from pprint import pprint
 
@@ -25,8 +26,9 @@ from cifsdk.utils import setup_logging, setup_runtime_path
 from cif.utils import get_argument_parser
 from cifsdk.client.zmq import ZMQ as Client
 from cifsdk.constants import ROUTER_ADDR
-from cifsdk.exceptions import AuthError, TimeoutError
-from .constants import HTTP_LISTEN, HTTP_LISTEN_PORT, TRACE, PIDFILE, SECRET_KEY
+from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch
+from .constants import HTTP_LISTEN, HTTP_LISTEN_PORT, TRACE, PIDFILE, \
+    SECRET_KEY
 
 from .indicators import api as indicators_api
 from .ping import api as ping_api
@@ -107,6 +109,52 @@ def pull_token():
 
     return t
 
+
+def _search_bulk(filters):
+    try:
+        with Client(ROUTER_ADDR, session['token']) as client:
+            r = client.indicators_search(filters)
+
+    except InvalidSearch as e:
+        return api.abort(400)
+
+    except AuthError as e:
+        return api.abort(401)
+
+    except zmq.error.Again as e:
+        return api.abort(503)
+
+    except Exception as e:
+        logger.error(e)
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            traceback.print_exc()
+
+        if 'invalid search' in str(e):
+            return api.abort(400, str(e))
+
+        return api.abort(500)
+
+    return r
+
+
+@app.route('/indicators/bulk', methods=['POST'])
+@app.route('/indicators/bulk/', methods=['POST'])
+def search_bulk():
+    if request.data == b'':
+        return 'invalid search', 400
+
+    data = request.data.decode('utf-8')
+
+    try:
+        data = loads(data)
+    except:
+        return 'invalid search', 400
+
+    results = []
+    for i in data:
+        results += _search_bulk({'indicator': i, 'limit': 25})
+
+    return dumps(results), 200
 
 # https://blog.miguelgrinberg.com/post/easy-websockets-with-flask-and-gevent
 # need to thread this out in dev mode
