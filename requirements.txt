@@ -34,9 +34,8 @@ pendulum==2.0.3
 csirtg-urlsml-tf==0.0a5
 csirtg-domainsml-tf==0.0a5
 csirtg-ipsml-tf==0.0a10
-csirtg-fm==1.0a16
+csirtg-fm==1.0a17
 apwgsdk==2.0a3
 
 
-#cifsdk==4.0a2
-https://github.com/csirtgadgets/verbose-robot-sdk-py/archive/4.0a2.tar.gz
+cifsdk==4.0b3

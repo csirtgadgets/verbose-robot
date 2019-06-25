@@ -40,7 +40,7 @@ declare -a CMDS=(
 
 for i in "${CMDS[@]}"; do
     echo "$i"
-    docker exec -it ${MACHINE_NAME} csirtg-fm ${i}
+    docker exec -it ${MACHINE_NAME} csirtg-fm --remember --remember-path /tmp/fm.db --ml ${i}
 done
 
 echo 'waiting 30s... let hunter do their thing...'
