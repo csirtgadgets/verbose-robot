@@ -160,14 +160,18 @@ class Store(MyProcess):
             except AuthError as e:
                 rv = {'status': 'failed', 'message': 'unauthorized'}
 
+            except Exception as e:
+                logger.error(e)
+
             for id, client_id, _ in self.create_queue[t]['messages']:
                 Msg(id=id, client_id=client_id, mtype=Msg.INDICATORS_CREATE,
                     data=rv)
 
             if rv['status'] == 'success':
-                self.store.tokens.update_last_activity_at(t,
-                                                          arrow.utcnow()
-                                                          .datetime)
+                try:
+                    self.store.tokens.update_last_activity_at(t, arrow.utcnow().datetime)
+                except Exception as e:
+                    logger.error(e)
 
             logger.debug('queue flushed..')
 
@@ -315,7 +319,10 @@ class Store(MyProcess):
         Msg(id=id, client_id=client_id, mtype=mtype, data=data).send(s)
 
         if not err:
-            self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
+            try:
+                self.store.tokens.update_last_activity_at(token, arrow.utcnow().datetime)
+            except Exception as e:
+                logger.error(e)
 
     def _queue_indicator(self, id, token, data, client_id):
         if not self.create_queue.get(token):
@@ -352,7 +359,11 @@ class Store(MyProcess):
             _check_indicator(i, t)
             _cleanup_indicator(i)
 
-        return self.store.indicators.create(t, data, flush=flush)
+        try:
+            return self.store.indicators.create(t, data, flush=flush)
+
+        except Exception as e:
+            logger.error(e)
 
     def handle_indicators_search(self, token, data, **kwargs):
         t = self.store.tokens.read(token)
