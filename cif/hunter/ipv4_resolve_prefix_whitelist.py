@@ -4,6 +4,9 @@ def process(i):
     if not i.is_ip():
         return
 
+    if not i.is_ipv4():
+        return
+
     if 'whitelist' not in i.tags:
         return
 
