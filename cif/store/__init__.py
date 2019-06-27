@@ -162,6 +162,7 @@ class Store(MyProcess):
 
             except Exception as e:
                 logger.error(e)
+                rv = {'status': 'failed', 'message': 'store failure'}
 
             for id, client_id, _ in self.create_queue[t]['messages']:
                 Msg(id=id, client_id=client_id, mtype=Msg.INDICATORS_CREATE,
