@@ -33,7 +33,7 @@ tensorflow==1.13.1
 pendulum==2.0.3
 csirtg-urlsml-tf==0.0a5
 csirtg-domainsml-tf==0.0a5
-csirtg-ipsml-tf==0.0a10
+csirtg-ipsml-tf==0.0b1
 csirtg-fm==1.0a17
 apwgsdk==2.0a3
 
