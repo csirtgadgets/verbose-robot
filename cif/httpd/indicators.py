@@ -3,15 +3,18 @@ import arrow
 import re
 import traceback
 import copy
+import zmq
 
 from flask_restplus import Namespace, Resource, fields
 from flask import request, session, current_app
 
-from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, HTTPD_FEED_WHITELIST_CONFIDENCE
+from cif.constants import FEEDS_LIMIT, FEEDS_WHITELIST_LIMIT, \
+    HTTPD_FEED_WHITELIST_CONFIDENCE, FEEDS_WHITELIST_DAYS
 from cifsdk.constants import ROUTER_ADDR, VALID_FILTERS
 from cifsdk.client.zmq import ZMQ as Client
-from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, SubmissionFailed, CIFBusy
-import zmq
+from cifsdk.exceptions import AuthError, TimeoutError, InvalidSearch, \
+    SubmissionFailed, CIFBusy
+
 from pprint import pprint
 
 
@@ -176,6 +179,11 @@ class IndicatorList(Resource):
 
         wl_filters['nolog'] = '1'
         wl_filters['limit'] = FEEDS_WHITELIST_LIMIT
+
+        now = arrow.utcnow()
+        now = now.replace(days=-FEEDS_WHITELIST_DAYS)
+        ts = '{0}Z'.format(now.format('YYYY-MM-DDTHH:mm:ss'))
+        wl_filters['reported_at'] = '%s' % ts
 
         return aggregate(self._pull(wl_filters))
 
