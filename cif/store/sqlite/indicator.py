@@ -7,7 +7,8 @@ import re
 import logging
 import time
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, desc, ForeignKey, or_, Index, func, and_
+from sqlalchemy import Column, Integer, String, Float, DateTime, UnicodeText, \
+    desc, ForeignKey, or_, Index, func, and_
 from sqlalchemy.orm import relationship, backref, class_mapper, lazyload
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy_utils.types.url import URLType
@@ -446,6 +447,19 @@ class IndicatorManager(IndicatorManagerPlugin):
         s = s.filter(or_(Indicator.group == g for g in groups))
         return s
 
+    def _search_bulk(self, filters, token):
+        s = self.handle().query(Indicator)
+
+        s = s.filter(or_(Indicator.indicator == i['indicator']
+                         for i in filters))
+
+        groups = token.get('groups', 'everyone')
+        if isinstance(groups, str):
+            groups = [groups]
+
+        s = s.filter(or_(Indicator.group == g for g in groups))
+        return s
+
     def _search(self, filters, token):
         myfilters = dict(filters.items())
 
@@ -479,6 +493,10 @@ class IndicatorManager(IndicatorManagerPlugin):
             i['first_at'] = i['last_at']
 
     def search(self, token, filters, limit=500):
+        if isinstance(filters, list) and len(filters) > 1:
+            s = self._search_bulk(filters, token).limit(500)
+            return [self.to_dict(i) for i in s]
+
         s = self._search(filters, token)
 
         limit = filters.pop('limit', limit)

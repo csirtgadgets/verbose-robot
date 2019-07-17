@@ -38,4 +38,4 @@ csirtg-fm==1.0a17
 apwgsdk==2.0a3
 
 
-cifsdk==4.0b3
+cifsdk==4.0b4

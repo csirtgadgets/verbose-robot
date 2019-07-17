@@ -115,6 +115,10 @@ class Store(MyProcess):
         return time.time()
 
     def _log_search(self, t, data):
+        # don't log bulk searches
+        if isinstance(data, list) and len(data) > 1:
+            return
+
         if not data.get('indicator'):
             return
 
