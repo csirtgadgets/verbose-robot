@@ -150,9 +150,7 @@ def search_bulk():
     except:
         return 'invalid search', 400
 
-    results = []
-    for i in data:
-        results += _search_bulk({'indicator': i, 'limit': 25})
+    results = _search_bulk(data)
 
     return dumps(results), 200
 
