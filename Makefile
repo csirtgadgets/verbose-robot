@@ -17,8 +17,11 @@ dist:
 docker:
 	@bash docker_build.sh
 
-docker-test:
+docker-test: docker
 	@bash docker/run_test.sh
+
+docker-run:
+	@bash docker/run.sh
 
 docker-test-es:
 	@bash docker/run_test_es.sh
