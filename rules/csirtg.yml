@@ -4,6 +4,12 @@ limit: 250
 
 feeds:
   # A feed of IP addresses block by a firewall (e.g. port scanners)
+  # you can comment this out if you're using a CSIRTG_TOKEN
+  darknet:
+    defaults:
+        tags: scanner, darknet
+    remote: http://csirtg.io/api/users/csirtgadgets/feeds/darknet.csv
+
   csirtgadgets/darknet:
     defaults:
       tags: scanner, darknet
@@ -27,21 +33,8 @@ feeds:
     defaults:
       tags: uce
 
-  # see https://csirtg.io/marketplace
-  # subscription based feeds
-
+  # checkout more feeds at: https://csirtg.io/users/csirtgadgets/feeds
   # csirtgadgets/correlated:
   #  defaults:
   #    tags: scanner
   #    confidence: 4
-
-  # csirtgadgets/urls:
-  #  defaults:
-  #    tags: phishing
-  #    confidence: 4
-
-  # csirtgadgets/searches:
-  #  defaults:
-  #    tags: suspicious, search
-  #    confidence: 4
-  #    description: 'indicators csirtg.io users have searched for'
