@@ -49,7 +49,7 @@ RUN CIF_ENABLE_INSTALL=1 python3 setup.py install
 RUN rm -rf /tmp/verbose-robot
 
 RUN pip3 install 'elasticsearch-dsl>=6.3,<7.0'
-RUN pip3 install https://github.com/csirtgadgets/verbose-robot-elasticsearch/archive/4.0a6.tar.gz
+RUN pip3 install https://github.com/csirtgadgets/verbose-robot-elasticsearch/archive/4.0a7.tar.gz
 
 VOLUME /etc/cif/rules/default
 VOLUME /var/lib/cif

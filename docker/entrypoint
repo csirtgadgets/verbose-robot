@@ -13,7 +13,9 @@ chmod 770 /etc/cif/rules
 chmod 770 /etc/cif/rules/default
 
 echo 'updating geoip'
-geoipupdate -v
+if [ ! -f /var/lib/GeoIP/GeoLite2-Country.mmdb ]; then
+    geoipupdate -v
+fi
 
 /etc/init.d/cron start
 /etc/init.d/bind9 start
