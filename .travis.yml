@@ -21,8 +21,7 @@ install:
   - pip install -r dev_requirements.txt
 
 script:
-#  - python setup.py test
-  - py.test -sv
+  - python setup.py test
   - python setup.py sdist bdist bdist_wheel
   - shellcheck -x deploymentkit/easybutton.sh
   - shellcheck -x deploymentkit/ubuntu16/bootstrap.sh
