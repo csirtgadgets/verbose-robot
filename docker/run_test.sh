@@ -15,7 +15,19 @@ echo ""
 echo "${CIF_TOKEN}"
 echo ""
 
-C=$(docker run -e CSIRTG_TOKEN="${CSIRTG_TOKEN}" -e CIF_TOKEN="${CIF_TOKEN}" -e CIF_HUNTER_ADVANCED=1 -e CIF_HUNTER_THREADS=2 -e CIF_HUNTER_TRACE=1 -it -d -p 5000:5000 --name verbose-robot --memory 2g --memory-swap 4g -v "${DOCKER_CONFIGS}"/geo/:/var/lib/GeoIP/ csirtgadgets/verbose-robot)
+#docker rm -f verbose-robot
+
+docker run \
+  -e MAXMIND_USER_ID="${MAXMIND_USER_ID}" \
+  -e MAXMIND_LICENSE_KEY="${MAXMIND_LICENSE_KEY}" \
+  -e CSIRTG_TOKEN="${CSIRTG_TOKEN}" \
+  -e CIF_TOKEN="${CIF_TOKEN}" \
+  -e CIF_HUNTER_ADVANCED=1 \
+  -e CIF_HUNTER_THREADS=2 \
+  -e CIF_HUNTER_TRACE=1 \
+  -it -d -p 5000:5000 --name verbose-robot --memory 2g --memory-swap 4g \
+  -v "${DOCKER_CONFIGS}"/geo/:/var/lib/GeoIP/ \
+  csirtgadgets/verbose-robot:latest
 
 bash docker/test.sh
 

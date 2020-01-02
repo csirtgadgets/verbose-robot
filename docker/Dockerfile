@@ -19,7 +19,6 @@ RUN echo 'cif             hard    nofile            100000' >> /etc/security/lim
 
 RUN useradd cif
 
-COPY docker/GeoIP.conf /etc/
 COPY docker/cron_restart.sh /etc/cron.weekly/cif_restart.sh
 COPY docker/cron_geoip.sh /etc/cron.monthly/geoip_update.sh
 COPY dev_requirements.txt /tmp/
