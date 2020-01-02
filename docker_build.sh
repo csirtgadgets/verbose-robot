@@ -9,4 +9,4 @@ set -e
 rm -rf dist/*
 python3 setup.py sdist
 
-docker build --rm=true --force-rm=true -t csirtgadgets/verbose-robot -f docker/Dockerfile .
+docker build --rm=true --force-rm=true -t csirtgadgets/verbose-robot:latest -f docker/Dockerfile .

@@ -12,8 +12,10 @@ chmod -R 660 /etc/cif/rules
 chmod 770 /etc/cif/rules
 chmod 770 /etc/cif/rules/default
 
-echo 'updating geoip'
-if [ ! -f /var/lib/GeoIP/GeoLite2-Country.mmdb ]; then
+if [[ ! -z "${MAXMIND_USER_ID}" ]]; then
+    echo "UserId ${MAXMIND_USER_ID}" > /etc/GeoIP.conf
+    echo "LicenseKey ${MAXMIND_LICENSE_KEY}" >> /etc/GeoIP.conf
+    echo "ProductIds GeoLite2-ASN GeoLite2-City GeoLite2-Country" >> /etc/GeoIP.conf
     geoipupdate -v
 fi
 
