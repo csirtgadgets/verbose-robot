@@ -3,6 +3,7 @@ import pytest
 from zmq import Context
 from faker import Faker
 from pprint import pprint
+import dns
 
 from csirtg_indicator import Indicator
 
@@ -35,7 +36,12 @@ def test_hunter_plugins():
 
     for p in plugins:
         rv = p.process(next(i for i in indicators))
-        rv = list(r for r in rv)
+
+        try:
+            rv = list(r for r in rv)
+
+        except dns.resolver.NoNameservers:
+            pass
 
         if not rv or len(rv) == 0:
             continue
