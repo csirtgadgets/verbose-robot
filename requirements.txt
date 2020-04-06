@@ -31,7 +31,7 @@ pyyaml
 csirtg_indicator==2.0
 numpy==1.18.0
 pandas==0.24
-tensorflow==1.13.2
+tensorflow==2.0.0
 pendulum==2.0.3
 csirtg-urlsml-tf==0.0a5
 csirtg-domainsml-tf==0.0a5
